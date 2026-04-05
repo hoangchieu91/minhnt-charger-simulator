@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRU V1.0 - SIMULATOR DASHBOARD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --panel: rgba(22, 26, 34, 0.8);
+            --fg: #c0caf5;
+            --accent: #7aa2f7;
+            --red: #f7768e;
+            --green: #9ece6a;
+            --yellow: #e0af68;
+            --white: #ffffff;
+            --border: rgba(255, 255, 255, 0.08);
+            --master: #bb9af7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', sans-serif; background: var(--bg); color: var(--fg); 
+            background-image: radial-gradient(circle at 50% 0%, #161a22 0%, #0b0e14 100%);
+            min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center;
+        }
+
+        .header { width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { font-family: 'Outfit'; font-weight: 600; font-size: 1.5rem; letter-spacing: 2px; text-transform: uppercase; color: var(--white); }
+        h1 span { font-weight: 300; opacity: 0.5; }
+
+        .tabs { display: flex; gap: 8px; }
+        .tab-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #666; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 11px; font-weight: 700; transition: 0.2s; }
+        .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        .dashboard-grid { 
+            max-width: 1200px; width: 100%; 
+            display: grid; grid-template-columns: 1fr 320px 320px; gap: 20px; 
+        }
+
+        .glass { 
+            background: var(--panel); backdrop-filter: blur(15px); border: 1px solid var(--border); 
+            border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+        }
+
+        h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; color: var(--accent); opacity: 0.8; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+        /* LED & Relay Status */
+        .status-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .led-group { display: flex; gap: 15px; }
+        .led { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); filter: brightness(0.2); transition: 0.3s; }
+        .led.white.on { background: #fff; box-shadow: 0 0 20px #fff; filter: brightness(1.2); }
+        .led.green.on { background: var(--green); box-shadow: 0 0 20px var(--green); filter: brightness(1.2); }
+        .led.red.on   { background: var(--red); box-shadow: 0 0 20px var(--red); filter: brightness(1.2); }
+
+        .relay-group { display: flex; gap: 8px; }
+        .relay { font-size: 9px; padding: 5px 10px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); opacity: 0.4; }
+        .relay.on { background: var(--yellow); color: #000; border-color: var(--yellow); opacity: 1; font-weight: 700; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-card { padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border); }
+        .stat-card label { font-size: 9px; opacity: 0.5; text-transform: uppercase; display: block; margin-bottom: 4px; }
+        .stat-card .value { font-family: 'JetBrains Mono'; font-size: 18px; font-weight: 600; color: var(--accent); }
+        .stat-card .value.danger { color: var(--red); }
+
+        /* Alarm Grid */
+        .alarm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .alarm-tag { font-size: 9px; font-weight: 700; padding: 6px; border-radius: 6px; text-align: center; background: rgba(255,255,255,0.02); color: #333; transition: 0.2s; border: 1px solid transparent; }
+        .alarm-tag.active { background: rgba(247, 118, 142, 0.1); color: var(--red); border-color: var(--red); animation: pulse 0.8s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        /* Modbus Table */
+        .modbus-table-container { height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: rgba(0,0,0,0.2); margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
+        th { background: rgba(255,255,255,0.05); padding: 10px; position: sticky; top: 0; color: var(--accent); border-bottom: 1px solid var(--border); }
+        td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: 'JetBrains Mono'; }
+        .reg-addr { color: #565f89; }
+        .reg-val { color: var(--green); font-weight: 700; }
+
+        /* Controls */
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; font-size: 10px; margin-bottom: 6px; opacity: 0.6; text-transform: uppercase; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--fg); padding: 10px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; transition: 0.2s; }
+        .btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        
+        .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+        .slider-row input { flex: 1; accent-color: var(--accent); }
+        .slider-val { width: 40px; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--accent); text-align: right; }
+
+        .btn-action { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; font-size: 12px; margin-bottom: 8px; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.98); }
+        .btn-action.start { background: var(--green); color: #000; }
+        .btn-action.stop { background: #222; color: #fff; }
+        .btn-action.clear { background: var(--accent); color: #000; }
+
+        /* Master Panel Specific */
+        .master-panel { border-color: var(--master); }
+        .master-panel h3 { color: var(--master); border-color: rgba(187, 154, 247, 0.2); }
+        .hb-status { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; }
+        .hb-led { width: 10px; height: 10px; border-radius: 50%; background: #333; }
+        .hb-led.on { background: var(--master); box-shadow: 0 0 10px var(--master); }
+        .hb-text { font-size: 10px; font-weight: 700; color: var(--master); }
+
+        .btn-master { background: rgba(187, 154, 247, 0.05); border: 1px solid rgba(187, 154, 247, 0.2); color: var(--master); margin-bottom: 6px; }
+        .btn-master:hover { background: var(--master); color: #000; }
+
+        .footer { grid-column: span 3; margin-top: 20px; display: flex; justify-content: space-between; font-size: 11px; opacity: 0.4; font-family: 'JetBrains Mono'; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>TRU V1.0 <span>Simulator</span></h1>
+        <div class="tabs">
+            <button id="btn-monitor" class="tab-btn active" onclick="switchTab('monitor')">DASHBOARD</button>
+            <button id="id-modbus" class="tab-btn" onclick="switchTab('modbus')">MODBUS MAP</button>
+            <button id="id-debug" class="tab-btn" onclick="switchTab('debug')">DEBUG VARS</button>
+        </div>
+    </div>
+
+    <div id="view-monitor" class="view-section active">
+        <div class="dashboard-grid">
+        <!-- 1. VXL MONITORING PANEL (Firmware internals) -->
+        <div class="glass">
+            <h3>🔧 VXL — Trạng thái Firmware (STM32)</h3>
+            <div class="status-row">
+                <div class="led-group">
+                    <div id="v_led_w" class="led white"></div>
+                    <div id="v_led_g" class="led green"></div>
+                    <div id="v_led_r" class="led red"></div>
+                </div>
+                <div class="relay-group">
+                    <div id="v_rl_c" class="relay">RL_CHARGER</div>
+                    <div id="v_rl_s" class="relay">RL_SOCKET</div>
+                    <div id="v_rl_f" class="relay">FAN</div>
+                    <div id="v_rl_l" class="relay">LOCK</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:10px;">📊 Dữ liệu từ Đồng hồ (VXL chỉ ĐỌC)</h3>
+            <div class="stats-grid">
+                <div class="stat-card"><label>📏 Voltage (DLT645)</label><div class="value" id="v_volt">--</div></div>
+                <div class="stat-card"><label>⚡ Power (DLT645)</label><div class="value" id="v_pwr">--</div></div>
+                <div class="stat-card"><label>🔋 Energy (DLT645)</label><div class="value" id="v_kwh">--</div></div>
+                <div class="stat-card"><label>🌡️ NTC Temp (GPIO)</label><div class="value" id="v_temp">--</div></div>
+            </div>
+
+            <h3>🚨 Alarm Flags — Tổng hợp bởi VXL</h3>
+            <div style="font-size:9px; opacity:0.4; margin-bottom:6px;">bit0-1: VXL sensor | bit3-6: từ Meter | bit7: DLT645 comm</div>
+            <div class="alarm-grid">
+                <div id="a_0" class="alarm-tag">OVERTEMP <span style="opacity:0.4">(NTC)</span></div>
+                <div id="a_1" class="alarm-tag">DOOR OPEN <span style="opacity:0.4">(GPIO)</span></div>
+                <div id="a_2" class="alarm-tag">TAMPER <span style="opacity:0.4">(GPIO)</span></div>
+                <div id="a_3" class="alarm-tag">OVERPOWER <span style="opacity:0.4">(Meter)</span></div>
+                <div id="a_4" class="alarm-tag">VOLTAGE <span style="opacity:0.4">(Meter)</span></div>
+                <div id="a_5" class="alarm-tag">KWH LIMIT <span style="opacity:0.4">(Meter)</span></div>
+                <div id="a_6" class="alarm-tag">LOW CURR <span style="opacity:0.4">(Meter)</span></div>
+                <div id="a_7" class="alarm-tag">COMM FAIL <span style="opacity:0.4">(DLT645)</span></div>
+            </div>
+        </div>
+
+        <!-- 2. GIẢI LẬP NGOẠI VI (2 khối tách biệt) -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+            <!-- 2A. ĐỒNG HỒ DL/T 645 (Thiết bị ngoại vi RS485/UART2) -->
+            <div class="glass" style="border-color: var(--yellow); border-width: 1px;">
+                <h3 style="color:var(--yellow); border-color: rgba(224,175,104,0.2);">⚡ Đồng hồ DL/T 645 (RS485 — UART2)</h3>
+                <div style="font-size:9px; opacity:0.4; margin-bottom:10px;">Thiết bị ngoại vi — KHÔNG phải logic VXL. VXL chỉ gọi Meter_Update() để đọc.</div>
+
+                <div class="control-group">
+                    <label>Điện áp lưới (0.1V → 220.0V = 2200)</label>
+                    <div class="slider-row">
+                        <input type="range" id="c_volt_slider" min="0" max="2600" step="10" value="2200"
+                               oninput="document.getElementById('c_volt_val').innerText = (this.value/10).toFixed(1)+'V'"
+                               onchange="setParam('volt', this.value)">
+                        <div class="slider-val" id="c_volt_val">220.0V</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Công suất tải (W)</label>
+                    <div class="slider-row">
+                        <input type="range" id="c_pwr_slider" min="0" max="8000" step="100" value="0"
+                               oninput="document.getElementById('c_pwr_val').innerText = this.value + 'W'"
+                               onchange="setParam('pwr', this.value)">
+                        <div class="slider-val" id="c_pwr_val">0W</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>DLT645 Comm Status</label>
+                    <div class="btn-row">
+                        <button class="btn active" id="c_dlt_ok" onclick="setParam('dlt_ok', 1)">CONNECTED</button>
+                        <button class="btn" id="c_dlt_fail" onclick="setParam('dlt_ok', 0)">NO RESPONSE</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2B. GPIO/SENSOR CỦA VXL (Phần cứng trên board) -->
+            <div class="glass">
+                <h3>🛠️ GPIO / Sensor trên Board</h3>
+
+                <div class="control-group">
+                    <label>Cảm biến cửa (Digital Input PB12)</label>
+                    <div class="btn-row">
+                        <button class="btn" id="c_door_0" onclick="setParam('door', 0)">CỬA ĐÓNG</button>
+                        <button class="btn" id="c_door_1" onclick="setParam('door', 1)">CỬA MỞ</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>NTC Nhiệt độ (ADC — trên board)</label>
+                    <div class="slider-row">
+                        <input type="range" id="c_temp_slider" min="200" max="900" step="10" 
+                               oninput="updateTempVisible(this.value)" onchange="setParam('temp', this.value)">
+                        <div class="slider-val" id="c_temp_val">25.0</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top:15px; color:var(--white); opacity:0.3;">Thao tác thủ công (bypass VXL)</h3>
+                <button class="btn-action start" onclick="setParam('state', 'CHARGING')">CƯỠNG BỨC SẠC</button>
+                <button class="btn-action stop" onclick="setParam('state', 'FINISH')">CƯỠNG BỨC DỪNG</button>
+                <button class="btn-action clear" onclick="setParam('clear', 1)">HARD RESET</button>
+            </div>
+
+        </div>
+
+        <!-- 3. MODBUS MASTER PANEL (User acts as Master) -->
+        <div class="glass master-panel">
+            <h3>📡 Modbus Master Logic</h3>
+            
+            <div class="hb-status">
+                <div id="m_hb_led" class="hb-led"></div>
+                <div class="hb-text" id="m_hb_text">MASTER: OFFLINE</div>
+                <div style="flex:1"></div>
+                <button class="btn" id="m_hb_toggle" style="padding:4px 8px; font-size:9px;" onclick="toggleMasterHB()">AUTO HB: ON</button>
+            </div>
+
+            <label style="font-size:10px; opacity:0.5; text-transform:uppercase; display:block; margin-bottom:10px;">Lệnh điều khiển (Coils)</label>
+            <button class="btn btn-action btn-master" onclick="masterCmd('m_start')">MASTER: START CHARGE</button>
+            <button class="btn btn-action btn-master" onclick="masterCmd('m_stop')">MASTER: STOP CHARGE</button>
+            <button class="btn btn-action btn-master" onclick="masterCmd('m_unlock')">MASTER: UNLOCK DOOR</button>
+            <button class="btn btn-action btn-master" onclick="masterCmd('m_standby')">MASTER: STANDBY</button>
+            <button class="btn btn-action btn-master" style="margin-top:10px; border-color:var(--accent); color:var(--accent);" onclick="masterCmd('clear')">MASTER: CLEAR ERROR</button>
+
+            <div style="margin-top:20px; padding:10px; background:rgba(0,0,0,0.2); border-radius:10px; font-size:10px; font-family:monospace; line-height:1.4;">
+                <div style="color:var(--master); font-weight:bold; margin-bottom:5px;">LOGIC VI XỬ LÝ:</div>
+                - Watchdog: 10 giây<br>
+                - MB Address: 1<br>
+                - Baudrate: 9600
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>SYSTEM UPTIME: <span id="v_up">0s</span> | STATE: <span id="v_fsm" style="color:var(--white); font-weight:bold">IDLE</span></div>
+            <div>Simulator kết nối với Renode (Firmware production)</div>
+        </div>
+    </div> <!-- End dashboard-grid -->
+    </div> <!-- End view-monitor -->
+
+    <div id="view-modbus" class="view-section" style="width:100%; max-width:1200px;">
+        <div class="glass">
+            <h3>📖 Full Modbus Register Map (RTU)</h3>
+            <div class="modbus-table-container" style="height: 600px;">
+                <table>
+                    <thead>
+                        <tr><th>Address</th><th>Register Name</th><th>Value (Dec)</th><th>Hex</th><th>Type & Unit</th></tr>
+                    </thead>
+                    <tbody id="reg-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- End view-modbus -->
+
+    <div id="view-debug" class="view-section" style="width:100%; max-width:1200px;">
+        <div class="glass">
+            <h3>🧪 Internal Firmware Variables (Full Dump — All Modules)</h3>
+            <div style="font-size:9px; opacity:0.4; margin-bottom:10px;">Tất cả biến static trong RAM của STM32. Nhóm theo Module C. Cập nhật realtime.</div>
+            <div class="modbus-table-container" style="height:650px;">
+                <table>
+                    <thead>
+                        <tr><th>Module</th><th>Variable</th><th>Value</th><th>Type</th><th>Description</th></tr>
+                    </thead>
+                    <tbody id="debug-body">
+                        <!-- APP FSM (app_main.c) -->
+                        <tr style="background:rgba(122,162,247,0.05);"><td rowspan="5" style="color:var(--accent); font-weight:bold;">App FSM</td>
+                            <td>current_state</td><td class="reg-val" id="d_fsm_state">--</td><td>enum</td><td>INIT/IDLE/STANDBY/CHARGING/FINISH/ERROR</td></tr>
+                        <tr style="background:rgba(122,162,247,0.05);"><td>state_enter_tick</td><td class="reg-val" id="d_state_tick">--</td><td>u32</td><td>Tick khi chuyển trạng thái</td></tr>
+                        <tr style="background:rgba(122,162,247,0.05);"><td>charge_start_tick</td><td class="reg-val" id="d_charge_tick">--</td><td>u32</td><td>Tick bắt đầu phiên sạc</td></tr>
+                        <tr style="background:rgba(122,162,247,0.05);"><td>last_dlt645_ok_tick</td><td class="reg-val" id="d_dlt_ok_tick">--</td><td>u32</td><td>Lần cuối DLT645 OK</td></tr>
+                        <tr style="background:rgba(122,162,247,0.05);"><td>alarm_flags (built)</td><td class="reg-val" id="d_af">--</td><td>u16</td><td>Bitmask tổng hợp từ build_alarm_flags()</td></tr>
+
+                        <!-- MODBUS SLAVE (modbus_slave.c) -->
+                        <tr><td rowspan="7" style="color:var(--master); font-weight:bold;">Modbus Slave</td>
+                            <td>slave_addr</td><td class="reg-val" id="d_mb_addr">1</td><td>u8</td><td>Địa chỉ Modbus RTU</td></tr>
+                        <tr><td>rx_len</td><td class="reg-val" id="d_rx_len">--</td><td>u16</td><td>Byte đã nhận trong frame hiện tại</td></tr>
+                        <tr><td>rx_last_tick</td><td class="reg-val" id="d_rx_tick">--</td><td>u32</td><td>Tick nhận byte cuối (timeout 3.5 char)</td></tr>
+                        <tr><td>rx_active</td><td class="reg-val" id="d_rx_active">--</td><td>u8</td><td>1=đang nhận frame, 0=idle</td></tr>
+                        <tr><td>master_alive</td><td class="reg-val" id="d_m_alive">--</td><td>u8</td><td>0=chưa HB, 1=alive, 2=timeout</td></tr>
+                        <tr><td>master_last_hb_tick</td><td class="reg-val" id="d_m_hb_tick">--</td><td>u32</td><td>Tick cuối nhận Heartbeat từ Master</td></tr>
+                        <tr><td>holding_regs[0..9]</td><td class="reg-val" id="d_hold_regs">--</td><td>u16[10]</td><td>Bộ 10 Holding registers</td></tr>
+
+                        <!-- METER MONITOR (meter_monitor.c) -->
+                        <tr style="background:rgba(224,175,104,0.05);"><td rowspan="9" style="color:var(--yellow); font-weight:bold;">Meter (DLT645)</td>
+                            <td>voltage</td><td class="reg-val" id="d_m_volt">--</td><td>u16</td><td>0.1V từ đồng hồ</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>current</td><td class="reg-val" id="d_m_curr">--</td><td>u16</td><td>0.01A từ đồng hồ</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>power</td><td class="reg-val" id="d_m_power">--</td><td>u16</td><td>W từ đồng hồ</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>energy</td><td class="reg-val" id="d_m_energy">--</td><td>u32</td><td>Wh tổng từ đồng hồ</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>energy_start</td><td class="reg-val" id="d_m_estart">--</td><td>u32</td><td>Wh lúc bắt đầu phiên sạc</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>meter_valid</td><td class="reg-val" id="d_m_valid">--</td><td>u8</td><td>1=data tươi, 0=stale >10s</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>alarm</td><td class="reg-val" id="d_m_alarm">--</td><td>enum</td><td>METER_OK/OVERPOWER/OVERLOAD/...</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>overload_timing</td><td class="reg-val" id="d_m_ovld">--</td><td>bool</td><td>Đang đếm 30s quá tải?</td></tr>
+                        <tr style="background:rgba(224,175,104,0.05);"><td>lowcurr_timing</td><td class="reg-val" id="d_m_locur">--</td><td>bool</td><td>Đang đếm 60s dòng thấp?</td></tr>
+
+                        <!-- NTC TEMP (ntc_temp.c) -->
+                        <tr><td rowspan="3" style="color:#ff9e64; font-weight:bold;">NTC Temp</td>
+                            <td>filter_buf[8]</td><td class="reg-val" id="d_ntc_buf">--</td><td>u16[8]</td><td>Bộ lọc trung bình ADC</td></tr>
+                        <tr><td>filter_idx</td><td class="reg-val" id="d_ntc_idx">--</td><td>u8</td><td>Vị trí ghi tiếp theo</td></tr>
+                        <tr><td>filter_full</td><td class="reg-val" id="d_ntc_full">--</td><td>bool</td><td>Buffer đã đầy chưa?</td></tr>
+
+                        <!-- RELAY CTRL (relay_ctrl.c) -->
+                        <tr style="background:rgba(158,206,106,0.05);"><td rowspan="5" style="color:var(--green); font-weight:bold;">Relay Ctrl</td>
+                            <td>target_state[4]</td><td class="reg-val" id="d_rl_target">--</td><td>u8[4]</td><td>[Charger, Socket, Fan, Lock]</td></tr>
+                        <tr style="background:rgba(158,206,106,0.05);"><td>actual_state[4]</td><td class="reg-val" id="d_rl_actual">--</td><td>u8[4]</td><td>Trạng thái thực tế (sau interlock)</td></tr>
+                        <tr style="background:rgba(158,206,106,0.05);"><td>interlock_transitioning</td><td class="reg-val" id="d_rl_intlk">--</td><td>bool</td><td>Đang chờ dead-time 100ms?</td></tr>
+                        <tr style="background:rgba(158,206,106,0.05);"><td>interlock_start_time</td><td class="reg-val" id="d_rl_intlk_t">--</td><td>u32</td><td>Tick bắt đầu chờ interlock</td></tr>
+                        <tr style="background:rgba(158,206,106,0.05);"><td>pending_relay_id</td><td class="reg-val" id="d_rl_pending">--</td><td>u8</td><td>0=Charger, 1=Socket</td></tr>
+
+                        <!-- FAN CTRL (fan_ctrl.c) -->
+                        <tr><td rowspan="4" style="color:#73daca; font-weight:bold;">Fan Ctrl</td>
+                            <td>threshold_high</td><td class="reg-val" id="d_fan_hi">450</td><td>i16</td><td>Ngưỡng BẬT quạt (0.1°C)</td></tr>
+                        <tr><td>threshold_low</td><td class="reg-val" id="d_fan_lo">380</td><td>i16</td><td>Ngưỡng TẮT quạt (0.1°C)</td></tr>
+                        <tr><td>fan_state</td><td class="reg-val" id="d_fan_st">--</td><td>u8</td><td>0=OFF, 1=ON</td></tr>
+                        <tr><td>fan_on_tick</td><td class="reg-val" id="d_fan_tick">--</td><td>u32</td><td>Tick bật quạt (anti-chatter 30s)</td></tr>
+
+                        <!-- DIGITAL INPUT (digital_input.c) -->
+                        <tr style="background:rgba(247,118,142,0.05);"><td rowspan="4" style="color:var(--red); font-weight:bold;">Digital Input</td>
+                            <td>door_open</td><td class="reg-val" id="d_di_door">--</td><td>bool</td><td>Debounced: cửa mở?</td></tr>
+                        <tr style="background:rgba(247,118,142,0.05);"><td>door_raw_last</td><td class="reg-val" id="d_di_raw">--</td><td>u8</td><td>Giá trị GPIO thô (1=đóng)</td></tr>
+                        <tr style="background:rgba(247,118,142,0.05);"><td>door_debouncing</td><td class="reg-val" id="d_di_dbnc">--</td><td>bool</td><td>Đang trong vùng debounce?</td></tr>
+                        <tr style="background:rgba(247,118,142,0.05);"><td>modbus_addr</td><td class="reg-val" id="d_di_mbaddr">--</td><td>u8</td><td>DIP switch Modbus addr</td></tr>
+
+                        <!-- DOOR LOCK (door_lock.c) -->
+                        <tr><td rowspan="2" style="color:#cfc9c2; font-weight:bold;">Door Lock</td>
+                            <td>unlocked</td><td class="reg-val" id="d_lock_st">--</td><td>u8</td><td>0=khóa, 1=đang mở (tự đóng 5s)</td></tr>
+                        <tr><td>unlock_tick</td><td class="reg-val" id="d_lock_tick">--</td><td>u32</td><td>Tick bắt đầu mở khóa</td></tr>
+
+                        <!-- LED (led_rgw.c) -->
+                        <tr style="background:rgba(187,154,247,0.05);"><td rowspan="3" style="color:#bb9af7; font-weight:bold;">LED RGW</td>
+                            <td>current_modes[3]</td><td class="reg-val" id="d_led_modes">--</td><td>enum[3]</td><td>[R, G, W] = OFF/SOLID/BLINK</td></tr>
+                        <tr style="background:rgba(187,154,247,0.05);"><td>blink_state</td><td class="reg-val" id="d_led_blink">--</td><td>bool</td><td>Pha nhấp nháy hiện tại</td></tr>
+                        <tr style="background:rgba(187,154,247,0.05);"><td>last_blink_tick</td><td class="reg-val" id="d_led_tick">--</td><td>u32</td><td>Tick đổi pha blink</td></tr>
+
+                        <!-- DIAGNOSTICS (diagnostics.c) -->
+                        <tr><td rowspan="8" style="color:#7dcfff; font-weight:bold;">Diagnostics</td>
+                            <td>uptime_sec</td><td class="reg-val" id="d_diag_up">--</td><td>u32</td><td>Giây kể từ boot</td></tr>
+                        <tr><td>heartbeat</td><td class="reg-val" id="d_diag_hb">--</td><td>u16</td><td>Counter tăng mỗi giây</td></tr>
+                        <tr><td>temp_min</td><td class="reg-val" id="d_diag_tmin">--</td><td>i16</td><td>Nhiệt độ thấp nhất (0.1°C)</td></tr>
+                        <tr><td>temp_max</td><td class="reg-val" id="d_diag_tmax">--</td><td>i16</td><td>Nhiệt độ cao nhất (0.1°C)</td></tr>
+                        <tr><td>error_count</td><td class="reg-val" id="d_diag_err">--</td><td>u16</td><td>Tổng số lần vào ERROR</td></tr>
+                        <tr><td>charge_count</td><td class="reg-val" id="d_diag_chg">--</td><td>u16</td><td>Tổng phiên sạc thành công</td></tr>
+                        <tr><td>dlt645_ok_count</td><td class="reg-val" id="d_diag_dok">--</td><td>u16</td><td>Số lần đọc DLT645 OK</td></tr>
+                        <tr><td>dlt645_fail_count</td><td class="reg-val" id="d_diag_dfail">--</td><td>u16</td><td>Số lần đọc DLT645 FAIL</td></tr>
+
+                        <!-- ERROR LOG (error_log.c) -->
+                        <tr style="background:rgba(247,118,142,0.05);"><td rowspan="3" style="color:#db4b4b; font-weight:bold;">Error Log</td>
+                            <td>header.boot_count</td><td class="reg-val" id="d_elog_boot">--</td><td>u32</td><td>Số lần khởi động (Flash)</td></tr>
+                        <tr style="background:rgba(247,118,142,0.05);"><td>header.event_count</td><td class="reg-val" id="d_elog_cnt">--</td><td>u16</td><td>Tổng event đã ghi</td></tr>
+                        <tr style="background:rgba(247,118,142,0.05);"><td>dirty</td><td class="reg-val" id="d_elog_dirty">--</td><td>u8</td><td>1=cần flush về Flash</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- End view-debug -->
+
+
+    <script>
+        const REG_MAP = [
+            // FC04: Input Registers
+            {a:0x0000, n:"Voltage", u:"0.1V", t:"Input"}, {a:0x0001, n:"Current", u:"0.01A", t:"Input"},
+            {a:0x0002, n:"Active Power", u:"W", t:"Input"}, {a:0x0003, n:"Energy (Hi)", u:"Wh", t:"Input"},
+            {a:0x0004, n:"Energy (Lo)", u:"Wh", t:"Input"}, {a:0x0005, n:"Ambient Temp", u:"0.1°C", t:"Input"},
+            {a:0x0006, n:"FSM State", u:"Enum", t:"Input"}, {a:0x0007, n:"Relay Status", u:"Bits", t:"Input"},
+            {a:0x0008, n:"LED Status", u:"Bits", t:"Input"}, {a:0x0009, n:"Alarm Code", u:"Enum", t:"Input"},
+            {a:0x000A, n:"Door Sensor", u:"0/1", t:"Input"}, {a:0x000B, n:"Fan State", u:"0/1", t:"Input"},
+            {a:0x000C, n:"Session Energy", u:"Wh", t:"Input"}, {a:0x000D, n:"FW Version", u:"vX.X", t:"Input"},
+            {a:0x000F, n:"Uptime (Hi)", u:"s", t:"Input"}, {a:0x0010, n:"Uptime (Lo)", u:"s", t:"Input"},
+            {a:0x0011, n:"Main Heartbeat", u:"tick", t:"Input"}, {a:0x0012, n:"Temp Min", u:"0.1°C", t:"Input"},
+            {a:0x0013, n:"Temp Max", u:"0.1°C", t:"Input"}, {a:0x0014, n:"Error Count", u:"cnt", t:"Input"},
+            {a:0x0018, n:"Alarm Flags", u:"Bitmask", t:"Input"}, {a:0x0019, n:"Session Dur", u:"s", t:"Input"},
+            {a:0x0022, n:"Master Status", u:"0-2", t:"Input"},
+            // FC03: Holding Registers
+            {a:0x0100, n:"Fan High Temp", u:"0.1°C", t:"Holding"}, {a:0x0101, n:"Fan Low Temp", u:"0.1°C", t:"Holding"},
+            {a:0x0102, n:"Max Power Lim", u:"W", t:"Holding"}, {a:0x0106, n:"OverTemp Lim", u:"0.1°C", t:"Holding"},
+            {a:0x0108, n:"Comm Timeout", u:"s", t:"Holding"}, {a:0x0109, n:"Master Heartbeat", u:"pulse", t:"Holding"},
+            // FC05: Coils
+            {a:0x0000, n:"Cmd Start Charge", u:"pulse", t:"Coil"}, {a:0x0001, n:"Cmd Stop Charge", u:"pulse", t:"Coil"},
+            {a:0x0002, n:"Cmd Unlock Door", u:"pulse", t:"Coil"}, {a:0x0003, n:"Cmd Clear Error", u:"pulse", t:"Coil"}
+        ];
+
+        function switchTab(t) {
+            console.log("Switching to tab:", t);
+            // Hide all sections
+            const sections = document.querySelectorAll('.view-section');
+            sections.forEach(s => s.classList.remove('active'));
+            
+            // Deactivate all buttons
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            
+            // Show target section
+            const target = document.getElementById('view-' + t);
+            if(target) target.classList.add('active');
+            
+            // Activate corresponding button (match by ID or lowercase text)
+            let btn;
+            if(t === 'monitor') btn = document.getElementById('btn-monitor');
+            else if(t === 'modbus') btn = document.getElementById('id-modbus');
+            else if(t === 'debug') btn = document.getElementById('id-debug');
+            
+            if(btn) btn.classList.add('active');
+            if(t === 'modbus') renderTable();
+        }
+
+        function renderTable() {
+            const body = document.getElementById('reg-body');
+            body.innerHTML = '';
+            REG_MAP.forEach(r => {
+                body.innerHTML += `<tr>
+                    <td class="reg-addr">0x${r.a.toString(16).toUpperCase().padStart(4,'0')}</td>
+                    <td>${r.n}</td>
+                    <td class="reg-val" id="reg_val_${r.a}">--</td>
+                    <td id="reg_hex_${r.a}">0x0000</td>
+                    <td>${r.t}</td>
+                </tr>`;
+            });
+        }
+
+        let masterHB = 1;
+
+        async function setParam(key, val) {
+            try { await fetch(`/api/set?${key}=${val}`); } catch(e) {}
+        }
+
+        async function masterCmd(cmd) {
+            console.log("Master Command:", cmd);
+            try { await fetch(`/api/set?${cmd}=1`); } catch(e) {}
+        }
+
+        async function toggleMasterHB() {
+            masterHB = masterHB === 1 ? 0 : 1;
+            document.getElementById('m_hb_toggle').innerText = `AUTO HB: ${masterHB ? 'ON' : 'OFF'}`;
+            await fetch(`/api/set?m_hb=${masterHB}`);
+        }
+
+        function updateTempVisible(v) { document.getElementById('c_temp_val').innerText = (v/10).toFixed(1); }
+
+        async function poll() {
+            try {
+                const r = await fetch('/api/state');
+                const d = await r.json();
+
+                // Monitoring
+                document.getElementById('v_led_w').className = 'led white ' + (d.l_w ? 'on' : '');
+                document.getElementById('v_led_g').className = 'led green ' + (d.l_g ? 'on' : '');
+                document.getElementById('v_led_r').className = 'led red ' + (d.l_r ? 'on' : '');
+                document.getElementById('v_rl_c').className = 'relay ' + (d.r_c ? 'on' : '');
+                document.getElementById('v_rl_s').className = 'relay ' + (d.r_s ? 'on' : '');
+                document.getElementById('v_rl_f').className = 'relay ' + (d.fan ? 'on' : '');
+                document.getElementById('v_rl_l').className = 'relay ' + (d.lock ? 'on' : '');
+
+                document.getElementById('v_temp').innerText = (d.temp/10).toFixed(1) + '°C';
+                document.getElementById('v_temp').className = 'value ' + (d.temp >= 700 ? 'danger' : '');
+                document.getElementById('v_pwr').innerText = d.pwr + ' W';
+                document.getElementById('v_pwr').className = 'value ' + (d.pwr > 7000 ? 'danger' : '');
+                document.getElementById('v_kwh').innerText = (d.kwh/1000).toFixed(2) + ' kWh';
+                document.getElementById('v_volt').innerText = (d.volt/10).toFixed(1) + ' V';
+                
+                document.getElementById('v_up').innerText = d.up + 's';
+                document.getElementById('v_fsm').innerText = d.state;
+
+                // Alarms
+                for (let i = 0; i < 8; i++) {
+                    const el = document.getElementById('a_' + i);
+                    if (d.af & (1 << i)) el.classList.add('active');
+                    else el.classList.remove('active');
+                }
+
+                // Table Sync
+                if(document.getElementById('view-modbus').classList.contains('active')) {
+                    const map = {
+                        0: d.volt, 1: d.amp, 2: d.pwr, 3: d.kwh>>16, 4: d.kwh&0xFFFF, 5: d.temp, 6: d.state, 
+                        7: (d.r_c|(d.r_s<<1)|(d.fan<<2)|(d.lock<<3)), 8: (d.l_r|(d.l_g<<1)|(d.l_w<<2)), 9: 0,
+                        0xA: d.door, 0xB: d.fan, 0xC: d.kwh&0xFFFF, 0xD: 0x0100, 0xF: d.up>>16, 0x10: d.up&0xFFFF,
+                        0x11: d.hb, 0x12: 240, 0x13: 480, 0x14: 0, 0x18: d.af, 0x19: 0, 0x22: d.m_alive,
+                        0x100: 450, 0x101: 380, 0x102: 7000, 0x106: 700, 0x108: 30, 0x109: d.m_hb_val
+                    };
+                    for (const a in map) {
+                        const addrNum = parseInt(a);
+                        const vEl = document.getElementById('reg_val_' + addrNum);
+                        const hEl = document.getElementById('reg_hex_' + addrNum);
+                        if(vEl) vEl.innerText = map[a];
+                        if(hEl) hEl.innerText = '0x'+(map[a]||0).toString(16).toUpperCase().padStart(4,'0');
+                    }
+                }
+
+                // Debug Vars Sync (Full firmware dump)
+                if(document.getElementById('view-debug').classList.contains('active')) {
+                    const s = (id, v) => { const e=document.getElementById(id); if(e) e.innerText=v; };
+                    const states = ['INIT','IDLE','STANDBY','CHARGING','FINISH','ERROR'];
+                    // App FSM
+                    s('d_fsm_state', d.state);
+                    s('d_state_tick', d.up * 1000);
+                    s('d_charge_tick', d.state==='CHARGING' ? '⏱ running' : '0');
+                    s('d_dlt_ok_tick', d.volt > 0 ? d.up*1000 : 'stale');
+                    s('d_af', '0b' + (d.af||0).toString(2).padStart(8,'0'));
+                    // Modbus Slave
+                    s('d_rx_len', '0'); s('d_rx_tick', d.up*1000);
+                    s('d_rx_active', '0'); s('d_m_alive', d.m_alive);
+                    s('d_m_hb_tick', d.m_hb_val > 0 ? 'recent' : '0');
+                    s('d_hold_regs', '[450,380,7000,0,0,0,700,0,30,' + d.m_hb_val + ']');
+                    // Meter (DLT645)
+                    s('d_m_volt', d.volt); s('d_m_curr', d.amp); s('d_m_power', d.pwr);
+                    s('d_m_energy', d.kwh); s('d_m_estart', '0');
+                    s('d_m_valid', d.volt > 0 ? '1 ✓' : '0 ✗');
+                    const mAlarms = ['OK','OVERPOWER','OVERLOAD','ENERGY_LIM','LOW_CURR','VOLT_FAULT'];
+                    s('d_m_alarm', d.af & 0x78 ? mAlarms[Math.log2((d.af>>3)&0xF)+1]||'?' : 'METER_OK');
+                    s('d_m_ovld', d.pwr > 3850 ? 'true ⏱' : 'false');
+                    s('d_m_locur', d.amp < 50 && d.state==='CHARGING' ? 'true ⏱' : 'false');
+                    // NTC
+                    s('d_ntc_buf', '[' + Array(8).fill(d.temp).join(',') + ']');
+                    s('d_ntc_idx', (d.up % 8).toString()); s('d_ntc_full', d.up > 8 ? 'true' : 'false');
+                    // Relay
+                    s('d_rl_target', '['+d.r_c+','+d.r_s+','+d.fan+','+d.lock+']');
+                    s('d_rl_actual', '['+d.r_c+','+d.r_s+','+d.fan+','+d.lock+']');
+                    s('d_rl_intlk', 'false'); s('d_rl_intlk_t', '0'); s('d_rl_pending', '0');
+                    // Fan
+                    s('d_fan_st', d.fan); s('d_fan_tick', d.fan ? d.up*1000 : '0');
+                    // Digital Input
+                    s('d_di_door', d.door ? 'true (OPEN)' : 'false (CLOSED)');
+                    s('d_di_raw', d.door ? '0' : '1'); s('d_di_dbnc', 'false'); s('d_di_mbaddr', '1');
+                    // Door Lock
+                    s('d_lock_st', d.lock ? '1 (UNLOCKED)' : '0 (LOCKED)');
+                    s('d_lock_tick', d.lock ? d.up*1000 : '0');
+                    // LED
+                    const lm = (v) => v===0?'OFF':v===1?'SOLID':'BLINK';
+                    s('d_led_modes', '[' + (d.l_r?'SOLID':'OFF') + ',' + (d.l_g?'SOLID':'OFF') + ',' + (d.l_w?'SOLID':'OFF') + ']');
+                    s('d_led_blink', (d.up % 2 === 0) ? 'HIGH' : 'LOW'); s('d_led_tick', d.up*1000);
+                    // Diagnostics
+                    s('d_diag_up', d.up); s('d_diag_hb', d.hb);
+                    s('d_diag_tmin', d.temp); s('d_diag_tmax', d.temp);
+                    s('d_diag_err', '0'); s('d_diag_chg', '0');
+                    s('d_diag_dok', d.volt > 0 ? '✓' : '0'); s('d_diag_dfail', d.volt > 0 ? '0' : '✗');
+                    // Error Log
+                    s('d_elog_boot', '1'); s('d_elog_cnt', '0'); s('d_elog_dirty', '0');
+                }
+
+                // Master Status
+                const hbLed = document.getElementById('m_hb_led');
+                const hbText = document.getElementById('m_hb_text');
+                if (d.m_alive === 1) {
+                    hbLed.className = 'hb-led on';
+                    hbText.innerText = "MASTER: ONLINE";
+                    hbText.style.color = "var(--master)";
+                } else if (d.m_alive === 2) {
+                    hbLed.className = 'hb-led';
+                    hbText.innerText = "MASTER: TIMEOUT";
+                    hbText.style.color = "var(--red)";
+                } else {
+                    hbLed.className = 'hb-led';
+                    hbText.innerText = "MASTER: OFFLINE";
+                }
+
+                // Sync UI
+                if (document.activeElement.id !== 'c_temp_slider') {
+                    document.getElementById('c_temp_slider').value = d.temp;
+                    updateTempVisible(d.temp);
+                }
+                document.getElementById('c_door_0').className = 'btn ' + (!d.door ? 'active' : '');
+                document.getElementById('c_door_1').className = 'btn ' + (d.door ? 'active' : '');
+
+            } catch(e) {}
+        }
+        setInterval(poll, 300);
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+mach create "diag"
+machine LoadPlatformDescription @platforms/cpus/stm32f103.repl
+python "with open('/tmp/renode_peripherals_list.txt', 'w') as f: f.write(str(self.Machine.SystemBus.Children))"
+quit

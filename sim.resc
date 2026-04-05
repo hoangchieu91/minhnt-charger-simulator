@@ -1,0 +1,23 @@
+# Monitor settings for high verbosity
+logLevel -1
+
+using sysbus
+mach create "tru_v1"
+machine LoadPlatformDescription @platforms/cpus/stm32f103.repl
+$bin?=@charger.elf
+
+# Create everything inside the machine scope if possible
+# Note: Renode 1.15.2 sometimes requires emulation scope for terminals
+emulation CreateServerSocketTerminal 4321 "modbus_uart" false
+
+# Use the most generic connector syntax
+connector Connect sysbus.usart1 modbus_uart
+
+macro reset
+"""
+    sysbus LoadELF $bin
+"""
+
+sysbus LoadELF $bin
+# Removed adc1 and gpio port B init because they may throw exceptions in this repl
+start

@@ -1,0 +1,61 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: tru_mosquitto
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    restart: unless-stopped
+
+  renode:
+    image: antmicro/renode:latest
+    container_name: tru_stm32_sim
+    volumes:
+      - .:/home/developer/project
+    working_dir: /home/developer/project
+    command: renode --nographics sim.resc
+    ports:
+      - "4321:4321"
+      - "1235:1235"
+    restart: unless-stopped
+
+  modbus_bridge:
+    image: alpine:latest
+    container_name: tru_modbus_bridge
+    depends_on:
+      - renode
+    command: >
+      sh -c "apk add --no-cache socat && 
+             socat -d -d PTY,link=/tmp/ttyTRU,raw,echo=0 TCP:renode:4321"
+    volumes:
+      - /tmp/sim_uarts:/tmp
+    restart: unless-stopped
+
+  gateway_sim:
+    build: 
+      context: .
+      dockerfile_inline: |
+        FROM python:3.10-slim
+        RUN pip install pymodbus paho-mqtt
+        WORKDIR /app
+        COPY gateway_sim.py .
+        CMD ["python", "gateway_sim.py"]
+    container_name: tru_esp32_mock
+    depends_on:
+      - mosquitto
+      - modbus_bridge
+    volumes:
+      - /tmp/sim_uarts:/tmp
+      - .:/app
+    environment:
+      - MQTT_BROKER=mosquitto
+      - MODBUS_PORT=/tmp/ttyTRU
+    restart: unless-stopped
+
+networks:
+  default:
+    name: tru_simulation_net

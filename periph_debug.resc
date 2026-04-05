@@ -1,0 +1,5 @@
+mach create "diag"
+machine LoadPlatformDescription @platforms/cpus/stm32f103.repl
+python "from Antmicro.Renode.Logging import LogLevel"
+python "for p in self.Machine.SystemBus.Children: self.Log(LogLevel.Info, 'FOUND: ' + p.Name)"
+quit

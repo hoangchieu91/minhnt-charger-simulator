@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhnt Charger - Tài Liệu Bàn Giao Kỹ Thuật Toàn Diện</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Elements (using standard unicode/SVG for lightweight implementation if needed, but we'll use CSS shapes and emojis for zero-dependency simplicity) -->
+    
+    <style>
+        :root {
+            /* Tones: Dark, Sleek, Glassmorphism */
+            --bg-body: #0b0f19;
+            --bg-sidebar: rgba(15, 23, 42, 0.85);
+            --bg-card: rgba(30, 41, 59, 0.6);
+            --bg-card-hover: rgba(30, 41, 59, 0.9);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            
+            --text-h: #f1f5f9;
+            --text-p: #94a3b8;
+            --text-muted: #64748b;
+            
+            --neon-blue: #38bdf8;
+            --neon-purple: #c084fc;
+            --neon-green: #34d399;
+            --neon-red: #fb7185;
+            --neon-yellow: #fbbf24;
+
+            --gradient-primary: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            --gradient-success: linear-gradient(135deg, #10b981, #059669);
+            --gradient-danger: linear-gradient(135deg, #ef4444, #b91c1c);
+            
+            --font-headings: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Consolas', 'Monaco', monospace;
+            
+            --sidebar-width: 280px;
+        }
+
+        * {
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-body);
+            background-color: var(--bg-body);
+            color: var(--text-p);
+            line-height: 1.7;
+            display: flex;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(192, 132, 252, 0.04) 0%, transparent 50%);
+        }
+
+        /* ----- SIDEBAR ----- */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar h2 {
+            font-family: var(--font-headings);
+            color: var(--text-h);
+            font-size: 1.4rem;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar h2 span {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-p);
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: block;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-h);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .nav-links a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 0;
+            background: var(--gradient-primary);
+            border-radius: 4px;
+            transition: height 0.3s ease;
+        }
+
+        .nav-links a:hover::before {
+            height: 60%;
+        }
+
+        /* ----- MAIN CONTENT ----- */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 4rem;
+            width: calc(100% - var(--sidebar-width));
+            max-width: 1200px;
+        }
+
+        /* Headers */
+        h1, h2, h3, h4 {
+            font-family: var(--font-headings);
+            color: var(--text-h);
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            line-height: 1.2;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 span {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            color: var(--neon-blue);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--neon-purple);
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        /* Cards & Containers */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(8px);
+            transition: transform 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            background: var(--bg-card-hover);
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.03);
+            font-weight: 600;
+            color: var(--text-h);
+            font-family: var(--font-headings);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: #0f172a;
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 1.2rem;
+            overflow-x: auto;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        code {
+            font-family: var(--font-code);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--neon-blue);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge.primary { background: rgba(56, 189, 248, 0.15); color: var(--neon-blue); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .badge.purple { background: rgba(192, 132, 252, 0.15); color: var(--neon-purple); border: 1px solid rgba(192, 132, 252, 0.3); }
+        .badge.success { background: rgba(52, 211, 153, 0.15); color: var(--neon-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+        .badge.danger { background: rgba(251, 113, 133, 0.15); color: var(--neon-red); border: 1px solid rgba(251, 113, 133, 0.3); }
+        .badge.warning { background: rgba(251, 191, 36, 0.15); color: var(--neon-yellow); border: 1px solid rgba(251, 191, 36, 0.3); }
+
+        /* Alerts/Notes */
+        .alert {
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+            background: rgba(255,255,255,0.03);
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .alert-icon { font-size: 1.5rem; }
+        
+        .alert.warning { border-color: var(--neon-yellow); }
+        .alert.danger { border-color: var(--neon-red); background: rgba(239, 68, 68, 0.05); }
+        .alert.info { border-color: var(--neon-blue); }
+
+        /* Lists */
+        ul { padding-left: 1.5rem; }
+        li { margin-bottom: 0.5rem; }
+
+        /* Progress Bar (Visual Flair) */
+        .stat-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .stat-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 3px;
+        }
+
+        /* Diagram box */
+        .diagram-box {
+            background: transparent;
+            border: 1px dashed var(--glass-border);
+            padding: 2rem;
+            text-align: center;
+            border-radius: 12px;
+            color: var(--text-h);
+            font-family: var(--font-code);
+            margin: 2rem 0;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* Architecture Steps */
+        .step-container {
+            display: flex;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        .step-container::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 40px;
+            bottom: -20px;
+            width: 2px;
+            background: var(--glass-border);
+        }
+        .step-container:last-child::before { display: none; }
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-sidebar);
+            border: 2px solid var(--neon-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--text-h);
+            z-index: 1;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+            flex-shrink: 0;
+        }
+        .step-content {
+            padding-left: 1.5rem;
+            padding-top: 0.3rem;
+        }
+        .step-content h4 { margin-top: 0; margin-bottom: 0.5rem; color: var(--text-h); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                padding: 1.5rem;
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 2rem 1.5rem;
+            }
+            h1 { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+        <h2>⚡ <span>Minhnt Charger</span></h2>
+        <ul class="nav-links">
+            <li><a href="#tong-quan">1. Tổng Quan Hệ Thống</a></li>
+            <li><a href="#kien-truc-vat-ly">2. Kiến Trúc Vật Lý</a></li>
+            <li><a href="#phan-mem-slave">3. Firmware Slave (STM32)</a></li>
+            <li><a href="#phan-mem-master">4. Firmware Master (ESP32)</a></li>
+            <li><a href="#giao-thuc-modbus">5. Giao Thức Modbus RTU</a></li>
+            <li><a href="#giao-thuc-mqtt">6. Giao Thức MQTT Cloud</a></li>
+            <li><a href="#co-che-chong-loi">7. Cơ Chế Chống Lỗi & Phục Hồi</a></li>
+            <li><a href="#dashboard">8. Local Web Dashboard</a></li>
+        </ul>
+        
+        <div style="margin-top: 3rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Rev 2.0 (FINAL) - 31/03/2026</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Trạng thái: <span style="color: var(--neon-green)">🔒 Đã phê duyệt</span></p>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <header>
+            <h1>Tài Liệu Bàn Giao Kỹ Thuật<br><span>Hệ Thống Trạm Sạc Minhnt</span></h1>
+            <p class="subtitle">Bao gồm toàn bộ kiến trúc, thiết kế Firmware STM32 (Trạm con) và ESP32 (Gateway).</p>
+        </header>
+
+        <!-- 1. TỔNG QUAN -->
+        <section id="tong-quan">
+            <h2>1. Tổng Quan Hệ Thống</h2>
+            <div class="glass-card">
+                <p>Hệ thống trạm sạc Minhnt là một nền tảng thiết bị IoT Công nghiệp, bao gồm kiến trúc phân tán 2 lớp (Master-Slave) nhằm đảm bảo sự ổn định của kết nối điện, bảo vệ chập cháy ở mức phần cứng và đồng thời chịu tải kết nối đám mây không mất dữ liệu ngay cả khi đứt mạng.</p>
+                
+                <div style="margin-top: 1.5rem;">
+                    <span class="badge primary">ESP-IDF v5.x</span>
+                    <span class="badge purple">STM32 HAL</span>
+                    <span class="badge success">FreeRTOS</span>
+                    <span class="badge warning">MQTT Store & Forward</span>
+                    <span class="badge danger">Hardened Modbus</span>
+                </div>
+            </div>
+
+            <div class="diagram-box">
+[Đám mây / Server (MQTT Broker: 10.25.7.116)]
+       │ (TCP/TLS qua RMII Ethernet LAN8742A)
+       ▼
+ ┌───────────────────────────────────────────────┐
+ │ ESP32 MASTER GATEWAY (ESP32-WROVER-B, 8MB)  │
+ │ - Web Dashboard cục bộ, Cota qua HTTPS        │
+ │ - Queue Offline = 28k records trên LittleFS   │
+ │ - Giao tiếp Modbus tập trung ở Core 1.        │
+ └───────────────────────┬───────────────────────┘
+       ▲ (RS485 - Mạng Modbus Daisy-chain) ▼
+       │                                     │
+ ┌─────┴──────┐                        ┌─────┴──────┐
+ │ STM32 SLAVE│                        │ STM32 SLAVE│ 
+ │ (Trạm #1)  │............            │ (Trạm #10) │
+ │ - Đo NTC   │                        │ - Cửa/Quạt │
+ │ - 4 Relays │                        │ - FSM Loop │
+ └─────┬──────┘                        └─────┬──────┘
+       ▼ DLT645-2007 Meter                   ▼
+[ Đồng hồ điện ]                      [ Phích cắm/Tải ]
+            </div>
+        </section>
+
+        <!-- 2. KIẾN TRÚC VẬT LÝ -->
+        <section id="kien-truc-vat-ly">
+            <h2>2. Kiến Trúc Vật Lý & Phần Cứng</h2>
+            
+            <div class="grid-cards">
+                <div class="glass-card">
+                    <h3>ESP32 Gateway (Master)</h3>
+                    <ul>
+                        <li><strong>MCU:</strong> ESP32-WROVER-B (Dual-core, 240MHz)</li>
+                        <li><strong>Bộ nhớ:</strong> 8MB Flash (Custom Partitions), 4MB PSRAM</li>
+                        <li><strong>Mạng Chính:</strong> IC PHY LAN8742A qua giao tiếp RMII (Dùng cáp LAN). Option dự phòng WiFi qua nút nhấn GPIO34 (ấn 5 giây).</li>
+                        <li><strong>Tuyế RS485:</strong> Dùng RS485 Cổng 2 (UART2: TX=GPIO15, RX=GPIO36, DE=GPIO13) do Cổng 1 bị lỗi thiết kế.</li>
+                        <li><strong>Ngoại vi:</strong> DS1307 RTC, Hệ đèn báo LED SOS.</li>
+                    </ul>
+                </div>
+                
+                <div class="glass-card">
+                    <h3>STM32 Board (Slave)</h3>
+                    <ul>
+                        <li><strong>MCU:</strong> STM32F103C8T6</li>
+                        <li><strong>Đầu vào Analog:</strong> PA0 (Đo chênh lệch NTC20K giải nhiệt).</li>
+                        <li><strong>Điều khiển Relay:</strong> PB0, PB1 (Khóa chéo Interlock Sạc/Ổ cắm), PB10 (Quạt), PB11 (Khóa cửa).</li>
+                        <li><strong>Giao tiếp:</strong> PA9/10 (Modbus tới Master), PA2/3 (DLT645 tới Công tơ điện).</li>
+                        <li><strong>DIP Switch:</strong> Set địa chỉ vòng Modbus (1-7) tại PB5, PB6, PB7.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. FIRMWARE STM32 SLAVE -->
+        <section id="phan-mem-slave">
+            <h2>3. Firmware Cấp Độ Thiết Bị (STM32)</h2>
+            <p>Trọng tâm ở cấp điểm sạc là <strong>Machine State (FSM)</strong> và kiến trúc phần mềm vòng lặp trống phi tắc nghẽn (Non-blocking). Được quy hoạch nghiêm ngặt làm 4 Layer.</p>
+            
+            <div class="glass-card" style="padding: 1.5rem;">
+                <div class="step-container">
+                    <div class="step-circle">L1</div>
+                    <div class="step-content">
+                        <h4>Hardware Abstraction (HAL/LL)</h4>
+                        <p style="margin: 0; font-size: 0.95rem;">Do CubeMX tự sinh: Thư mục <code>Drivers/</code>, điều khiển thanh ghi gốc vi điều khiển cấp thấp nhất.</p>
+                    </div>
+                </div>
+                <div class="step-container">
+                    <div class="step-circle">L2</div>
+                    <div class="step-content">
+                        <h4>Board Support Package (BSP)</h4>
+                        <p style="margin: 0; font-size: 0.95rem;">Khởi tạo Clock, ngoại vi tại `main.c`, `stm32f1xx_it.c`. Chỉ chứa ngắt trống để ném dữ liệu vào Ring Buffer.</p>
+                    </div>
+                </div>
+                <div class="step-container">
+                    <div class="step-circle">L3</div>
+                    <div class="step-content">
+                        <h4>Middleware & Logic Modules</h4>
+                        <p style="margin: 0; font-size: 0.95rem;">Thư mục <code>Modules/</code> (`ntc20k.c`, `modbus_slave.c`, `relay_ctrl.c`). Chú ý: <code>relay_ctrl.c</code> <strong>ép cứng khóa chéo</strong>, không cho phép cấp nguồn nếu relay kia đang đóng (dead-time 100ms).</p>
+                    </div>
+                </div>
+                <div class="step-container">
+                    <div class="step-circle">L4</div>
+                    <div class="step-content">
+                        <h4>Application (Main State Machine)</h4>
+                        <p style="margin: 0; font-size: 0.95rem;">Tập tin <code>app_main.c</code>. Vòng FSM 5 vòng trạng thái quyết định sinh sát phiên sạc: <strong>INIT → IDLE → STANDBY → CHARGING → FINISH / ERROR</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert danger">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                    <strong>An Toàn Thiết Bị (Safety Critical)</strong>
+                    <p style="margin: 0.3rem 0 0 0;">Lớp STM32 sẽ TỰ ÐỘNG nhảy trạng thái ERROR cắt cầu dao sạc (Disconnect Relay) tự chủ mà không cần chờ Master quyết định nếu: Nhiệt độ NTC > 70°C, Giám sát cửa phát hiện cửa mở (DOOR SENSOR), Cảnh báo phá hoại, hoặc DLT645 báo công suất tiêu thụ vượt Max_Power_W tức thời/110% định mức.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. FIRMWARE ESP32 MASTER -->
+        <section id="phan-mem-master">
+            <h2>4. Firmware Điều Phối Trung Tâm (ESP32)</h2>
+            <p>ESP32 đóng vai trò Não bộ. Đọc dữ liệu, gói gọn json và đẩy lên Server. Kiến trúc ESP-IDF v5.x thuần túy (C11), chia vùng RAM cực kỳ chi tiết.</p>
+
+            <h3>Phân chia Bộ Nhớ 8MB (Partition Table)</h3>
+            <div class="table-responsive">
+                <table>
+                    <tr><th>Tên Phân Vùng</th><th>Dung lượng</th><th>Chuẩn</th><th>Nhiệm vụ</th></tr>
+                    <tr><td><code>nvs</code></td><td>24KB</td><td>NVS</td><td>Lưu Password, Config, Cert CA, Total Posts</td></tr>
+                    <tr><td><code>ota_0</code> / <code>ota_1</code></td><td>2560KB x 2</td><td>APP</td><td>Firmware chính & Firmware Backup (OTA Tự động Rollback sau 60s nếu lỗi).</td></tr>
+                    <tr><td><code>www</code></td><td>768KB</td><td>Spiffs</td><td>HTML/CSS/JS cục bộ của Web Dashboard. (Vue/Vite Gzip)</td></tr>
+                    <tr><td><code>storage</code></td><td>1792KB</td><td>LittleFS</td><td><strong>Kho chứa Offline Queue (Lưu trữ bản tin mất mạng)</strong>, Session backup.</td></tr>
+                    <tr><td><code>wdt_log</code></td><td>128KB</td><td>Spiffs</td><td>Lưu Dump crash TSV ghi nhận lý do MCU reset.</td></tr>
+                </table>
+            </div>
+
+            <h3>FreeRTOS Task Map</h3>
+            <p>Mã nguồn chạy song song 7 Tasks. Tính năng mạng và giao thức được cô lập.</p>
+            <div class="grid-cards">
+                <div class="glass-card" style="padding: 1.2rem;">
+                    <h4 style="margin-top: 0;">Core 1 (Real-Time Modbus)</h4>
+                    <ul style="font-size: 0.9rem;">
+                        <li><code>task_modbus_polling</code> (1s): Đọc FC04, detect thay đổi.</li>
+                        <li><code>task_modbus_heartbeat</code> (3s): Ghi FC06 xuống slave xác thực kết nối sống.</li>
+                    </ul>
+                </div>
+                <div class="glass-card" style="padding: 1.2rem;">
+                    <h4 style="margin-top: 0;">Core 0 (Networking & Storage)</h4>
+                    <ul style="font-size: 0.9rem;">
+                        <li><code>task_mqtt_publish</code>: Bắn gói tin Event Driven.</li>
+                        <li><code>task_mqtt_subscribe</code>: Giải nén JSON từ broker.</li>
+                        <li><code>task_webserver</code>: Phục vụ HTTP/WebSocket.</li>
+                        <li><code>task_time_sync</code>: NTP & RTC DS1307.</li>
+                        <li><code>task_system_monitor</code>: WDT Watchdog feed.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. GIAO THỨC MODBUS -->
+        <section id="giao-thuc-modbus">
+            <h2>5. Cấu trúc Registers Modbus (Hoạt Nội Bộ)</h2>
+            <p>Định dạng RS485 Baud 9600-8N1.</p>
+            
+            <div class="glass-card">
+                <h3>Các Thanh Ghi Holding Cơ Bản (HR)</h3>
+                <div class="table-responsive" style="margin-top: 0.5rem;">
+                    <table>
+                        <tr><th>Type</th><th>Địa Chỉ</th><th>Tên Chức Năng</th><th>Quyền (Master)</th><th>Ghi chú</th></tr>
+                        <tr><td>Input(FC04)</td><td><code>0x0000 - 0x001A</code></td><td>TLM Measurements</td><td>Đọc (Read-only)</td><td>V, A, W, kWh, Temp, FSM State, Door.</td></tr>
+                        <tr><td>Input(FC04)</td><td><code>0x001B - 0x0020</code></td><td>Flash Storage Counter</td><td>Đọc (Read-only)</td><td>Chỉ số sống sót vĩnh viễn (lỗi mạch, lần khởi động).</td></tr>
+                        <tr><td>Coil(FC05)</td><td><code>0x0000 - 0x0004</code></td><td>Triggers</td><td>Ghi Mở (Write 0xFF00)</td><td>Start, Stop, Clear Error, Unlock Door.</td></tr>
+                        <tr><td>Hold(FC03)</td><td><code>0x0100 - 0x0107</code></td><td>Configuration Limits</td><td>Đọc / Ghi</td><td>Max power, Energy Limit, Ngưỡng Nhiệt 700(70°C).</td></tr>
+                        <tr><td>Hold(FC03)</td><td><code>0x0109</code></td><td>Master Heartbeat</td><td>Ghi Tự Sinh (Loop)</td><td><strong>Master ghi mỗi 3-5s. Nếu Slave mất HB > 10s -> Auto Ngắt Sạc.</strong></td></tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. GIAO THỨC MQTT CLOUD -->
+        <section id="giao-thuc-mqtt">
+            <h2>6. Payload Cấu Trúc Đám Mây (MQTT V3.4)</h2>
+            <p>Sử dụng giao thức MQTT có TLS/SSL nội bộ kết nối về EMQX Broker (10.25.7.116). Các topic được phân cấp RETAIN rõ ràng.</p>
+
+            <div class="glass-card">
+                <code style="display: block; margin-bottom: 1rem; color: var(--neon-purple);">TOPIC CHÍNH BÁO TRẠNG THÁI GW: charging/st/{mac}/gw_status</code>
+                <pre><code>{
+  "timestamp": 1711284000,
+  "uptime": 3600,
+  "wifi_rssi": -65,
+  "stats": {
+    "total_posts": 10,  // "Trạm 10 súng sạc thì quản lý 10 node slave"
+    "idle": 5, "charging": 3, "error": 1, "offline": 1
+  },
+  "posts_state": [ {"id": 1, "state": 2}, {"id": 2, "state": 0} ]
+}</code></pre>
+            </div>
+
+            <div class="grid-cards">
+                <div class="glass-card">
+                    <h4>Bản Tin Sensor (TLM)</h4>
+                    <p><code>changing/st/{mac}/post/{id}/tlm</code></p>
+                    <p style="font-size: 0.9rem;">Bắn mỗi 30s khi sạc (Hoặc mỗi 0.1kWh). Chứa Data V, A, W, kWh, Tần số, Nhiệt độ nội tại trụ sạc.</p>
+                </div>
+                <div class="glass-card">
+                    <h4>Điều Khiển Hành Vi (CMD)</h4>
+                    <p><code>changing/st/{mac}/post/{id}/cmd</code></p>
+                    <p style="font-size: 0.9rem;">Các lệnh Server gửi xuống: <code>start_charge</code>, <code>stop_charge</code> (Params: lý do ngừng), <code>clear_error</code>.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. THIẾT KẾ CHỐNG LỖI -->
+        <section id="co-che-chong-loi">
+            <h2>7. Tính Năng Mũi Nhọn: Tự Khôi Phục & Store-and-Forward</h2>
+            
+            <div class="alert info">
+                <span class="alert-icon">🛡️</span>
+                <div>
+                    <strong>Cơ Chế Binary Block 64 bytes - LittleFS Queue</strong>
+                    <p style="margin: 0.3rem 0 0 0;">Khi cáp quang bị cắt, Mạng rớt: MQTT Task lập tức dừng publish. Tất cả TLM / EVENT Modbus được serialize thành các khối nhị phân cô đặc chỉ 64 Byte (Tiết kiệm vòng đời write flash so với ghi kiểu Text JSON). Ghi vào slot SLOT_PENDING. Tổng sức chứa 28,672 Records.</p>
+                </div>
+            </div>
+
+            <div class="grid-cards" style="margin-top: 2rem;">
+                <div class="glass-card">
+                    <h3>Khôi phục Queue Replay</h3>
+                    <p>Ngay khi MQTT <code>EVENT_CONNECTED</code> nảy cờ. Thuật toán Replay quét LittleFS, dựng lại chuỗi JSON nguyên bản kèm các <code>sequence</code> tăng đơn điệu thời gian thực, gửi tuần tự lên Broker trong Background. Giải phóng bằng <code>SLOT_PUBLISHED</code> đè bộ nhớ tránh phân mảnh.</p>
+                </div>
+                <div class="glass-card">
+                    <h3>Bảo vệ Boot-Loop Flash</h3>
+                    <p>Trong môi trường sụt điện (Brownout EMI), NVS Flash rất dễ mòn <code>wear-out</code> chết phần cứng. Có cơ chế chặn: NẾU uptime boot dưới 30s xảy ra 5 lần liên tiếp -> Bật Safe Mode (Sos Led), tắt toàn bộ Network, chỉ chạy Local UI để Fix, dứt khoát KHÔNG ghi log nữa để bảo vệ ESP.</p>
+                </div>
+            </div>
+
+            <p style="border-left: 2px solid var(--neon-red); padding-left: 1rem;">
+                <strong>Layer Xác Thực JSON Lệnh Tới:</strong> Trước khi thực thi bất kỳ lệnh <code>start_charge</code> nào từ Backend trả về, Core ESP phải qua 6 Tầng Guard (Null payload -> Bad Json -> Field check -> Stale Timestamp so với RTC -> Rate Limiting -> ID Out of bounds Bounds Range).
+            </p>
+        </section>
+
+        <!-- 8. DASHBOARD -->
+        <section id="dashboard">
+            <h2>8. Giao Diện Quản Trị Cục Bộ (Local UI)</h2>
+            <p>ESP32 chạy một Web Server siêu nhẹ ngay tại IP tĩnh Gateway phục vụ Kỹ thuật viên bảo trì. Mã Nguồn Web được nén Vue/Vite siêu nhẹ nằm trong phân vùng Spiffs.</p>
+
+            <ul class="feature-list" style="list-style: square; padding-left: 1rem; color: var(--text-h);">
+                <li><strong>Cổng giám sát Live WebSocket:</strong> Đọc trực tiếp thanh ghi không qua trạm trung chuyển Internet (Low Latency < 50ms). Liệt kê mảng tất cả các trạm đang kết nối.</li>
+                <li><strong>Network Setup:</strong> Điền mật khẩu MQTT, tĩnh IP, Set Master ID trực tiếp vào bộ nhớ NVS.</li>
+                <li><strong>Công Cụ Thợ Điện:</strong> Cho phép đụng vào Coils để Test mở khóa cửa thay vì cần có App App User, Ping cổng Cloud để xác định DNS có sống không.</li>
+            </ul>
+        </section>
+
+        <footer style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--glass-border); text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0;">2026 © Minhnt Charger IoT Solutions / Dự án đã được nghiệm thu.</p>
+            <p style="color: var(--neon-blue); font-size: 0.8rem; margin-top: 0.2rem;">Generated Handover Report</p>
+        </footer>
+    </main>
+
+</body>
+</html>

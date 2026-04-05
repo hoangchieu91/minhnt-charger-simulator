@@ -1,0 +1,47 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Logs
+*.log
+*.log.*
+bridge_log.txt
+sim_log.txt
+sse.log
+
+# Renode
+renode_1.15.2_portable/
+renode.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Cache
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+mosquitto/data/
+mosquitto/log/
+
+# Temp
+/tmp/
