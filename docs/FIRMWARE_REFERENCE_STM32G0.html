@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhnt Charger - Danh mục Kỹ Thuật Firmware (STM32G030)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #475569;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            color: var(--text-main);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 2rem;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .header-doc {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-doc h1 {
+            margin: 0 0 1rem 0;
+            font-size: 2.25rem;
+            font-weight: 700;
+        }
+
+        /* Tabs container */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+            background-color: #f1f5f9;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards/Sections inside tabs */
+        .section-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        h2 { color: var(--primary); border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+        h3 { color: var(--text-main); margin-top: 1.5rem; }
+        .tag { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; margin-right: 0.5rem; background: #e0e7ff; color: #3730a3; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left;}
+        th { background-color: #f1f5f9; color: var(--secondary); font-weight: 600; }
+        tr:hover td { background-color: #f8fafc; }
+        
+        .alert-box { padding: 1rem; border-radius: 8px; background-color: #fef2f2; border-left: 4px solid var(--danger); color: #991b1b; margin: 1rem 0; }
+        .alert-box.info { background-color: #f0fdf4; border-left-color: var(--success); color: #166534; }
+        .alert-box.warn { background-color: #fffbeb; border-left-color: var(--warning); color: #b45309; }
+        code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 4px; color: #e11d48; font-family: monospace;}
+        .mermaid { background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad:true});</script>
+</head>
+<body>
+
+    <div class="header-doc">
+        <h1>Minhnt Charger - Firmware Reference Manual</h1>
+        <p>Bản tổng hợp kiến trúc hệ thống, Giải thuật bảo vệ, Phân tầng logic và Bản đồ Thanh ghi Modbus (Updated for STM32G030).</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'tab-architecture')">Kiến Trúc & GPIO</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-logic')">Giải Thuật System Logic</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-billing')">Quy Trình Tính Tiền (Billing FSM)</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-modbus-regs')">Modbus Register Map</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-dlt645')">Thuật Toán DLT645 Polling</button>
+    </div>
+
+    <!-- Tab 1: Architecture -->
+    <div id="tab-architecture" class="tab-content active">
+        <div class="section-card">
+            <h2>Kiến Trúc Hệ Thống (Hardware Architecture)</h2>
+            <p><strong>Bản chất Hệ thống:</strong> Bare-metal Superloop FSM kết hợp Asynchronous IRQs.</p>
+            <ul>
+                <li><strong>MCU:</strong> STM32G030C8T6 (Core Cortex-M0+). Đã được tối ưu file lds và linker script để loại trừ memory array leak của C++ startup (C++ constructors không được dùng).</li>
+                <li><strong>Chu kỳ ngắt cứng:</strong> Hỗ trợ DMA / Ngắt mức độ Ưu tiên cao cho Serial Comm. Lõi logic xoay vòng với tần số thấp để tính timing chính xác tới ms qua SysTick.</li>
+            </ul>
+        </div>
+        
+        <div class="section-card">
+            <h2>Bản Đồ Cổng Ngoại Vi (Pinout Mapping)</h2>
+            <table>
+                <tr><th>Khối</th><th>Tên Chân (Pin)</th><th>Mục Đích / Chức Năng</th></tr>
+                <tr><td>RS485 - COM1 / Modbus</td><td>PA9 (TX), PA10 (RX), PA1 (DE)</td><td>Giao tiếp với ESP32 Gateway (9600-8-N-1). Sử dụng ngắt USART1_IRQ.</td></tr>
+                <tr><td>RS485 - COM2 / Meter</td><td>PA2 (TX), PA3 (RX), PA4 (DE)</td><td>Giao tiếp với công tơ điện DLT645. Tốc độ rùa 2400-8-E-1. Ngắt USART2_IRQ độc lập.</td></tr>
+                <tr><td>Mạch Đóng Cắt (Relay)</td><td>PB0, PB1</td><td>Cấp nguồn chính cho Súng sạc (PB0) và Ổ cắm phụ 220V ngoài hệ thống (PB1).</td></tr>
+                <tr><td>Hệ Phụ Trợ</td><td>PB10, PB11</td><td>Đóng cắt Quạt tản nhiệt nhiệt năng trạm (PB10) và Cuộn hút Từ mở Khóa tủ (PB11).</td></tr>
+                <tr><td>Đầu vào số (Sensors)</td><td>PB12</td><td>Cảm biến an toàn cửa tủ (Mức LOW = An toàn).</td></tr>
+                <tr><td>ADC Nhiệt Tòa Độ</td><td>PA0</td><td>NTC trở cảm biến đo nhiệt độ nội khu tủ sạc. Giám sát rủi ro chống cháy.</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 2: System Logic -->
+    <div id="tab-logic" class="tab-content">
+        <div class="section-card">
+            <h2>Finite State Machine (FSM Cốt Lõi)</h2>
+            <p>Toàn bộ dòng đời của trạm sạc điện tuân chỉnh nghiêm ngặt vòng lặp Máy Trạng Thái.</p>
+            <ul>
+                <li><code>0 - INIT</code> : Trạng thái khởi tạo.</li>
+                <li><code>1 - IDLE</code> : Trạm sạc rảnh. Led trắng sáng. Sẵn sàng chờ lệnh.</li>
+                <li><code>2 - STANDBY</code> : Tương tự IDLE nhưng dùng khi trạm có kết nối khóa xe, chờ quẹt thẻ, v.v.</li>
+                <li><code>3 - CHARGING</code> : Trạng thái cấp nguồn mạnh nhất. Relay mở 100%. Nâng cấp kiểm soát NTC (quá nhiệt), DLT645 (quá điện/quá công suất) từng mili-giây. Red LED nhấp nháy.</li>
+                <li><code>4 - FINISH</code> : Hoàn thành lượt sạc an toàn. Gateway cần đọc và tính bill.</li>
+                <li><code>5 - ERROR</code> : Trạng thái Cấm sạc toàn diện. Mọi Relay đều bị cưỡng ép mở (OFF). Rơi vào trạng thái này khi Tamper hoặc Quá nhiệt mạch.</li>
+            </ul>
+        </div>
+        
+        <div class="section-card">
+            <h2>Cơ chế Bảo Vệ Động (Dynamic Auto-Protection)</h2>
+            <div class="alert-box">
+                <strong>An Toàn Lõi (Hardware Safety):</strong><br>
+                - <strong>Overtemp:</strong> Nếu NTC >= ngưỡng (70 độ C), MCU dập mọi relay sạc, đèn lỗi sáng, ESP32 sẽ nhận cờ báo OVERTEMP.<br>
+                - <strong>Tamper & Door:</strong> Door = 1 (cửa đã bị cạy phá) lập tức nhảy STATE_ERROR bất diệt cho tới khi Gateway gửi lệnh Clear.
+            </div>
+            <div class="alert-box info">
+                <strong>An Toàn Nguồn (Power Safety):</strong><br>
+                - <strong>Load Balancing:</strong> Nếu $I\_Current > Dynamic\_Limit \times 1.1$, báo động <em>OVERCURRENT</em> ngắt cầu dao khẩn cấp.<br>
+                - <strong>Energy Reached:</strong> Nếu đã sạc đủ X kW/h như trong lệnh nạp, chuyển qua <code>FINISHED_AUTO</code> ngắt quyền chạy rơ le êm dịu.<br>
+                - <strong>Low Current Drop:</strong> Xe tải điện sạc nhồi 80% tới lúc tiệm cận xong thường ăn dòng dưới `0.5A`. CPU đếm chờ trong 60 giây, nếu dòng khum phục hồi, tự cắt điện thông minh.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Billing Logic -->
+    <div id="tab-billing" class="tab-content">
+        <div class="section-card">
+            <h2>Quy trình Billing & Nạp tiền linh hoạt (Session Energy Limit)</h2>
+            <p>Hệ thống có thanh ghi <code>session_energy_limit</code> (0x010B) dùng để báo cho Firmware số Wh tối đa người dùng được sạc. Do biến này là lưu trữ RAM (không fix cố định), <strong>ESP32 Gateway hoàn toàn có thể ghi nạp đè liên tục trong lúc đang sạc</strong> để kéo dài thời gian/năng lượng sạc nếu khách hàng nạp thêm tiền.</p>
+            <ul>
+                <li><strong>Max Quota:</strong> Thanh ghi uint16 hỗ trợ cao nhất <code>65535 Wh</code> (Tương đương 65.5 kWh). Quá đủ cho một phiên sạc đầy các dòng xe dưới 80kWh. Nếu xe lớn hơn, Firmware có thể reset cấp theo phase.</li>
+                <li><strong>Cách ghi (Dynamic Update):</strong> Đơn giản ghi lệnh Modbus Write Single Register (FC06) vào `0x010B`. MCU mỗi nhịp Loop đều lấy số Wh đo được từ đầu phiên trừ đi con số Limit này. Nếu $Vượt$ => Cắt điện!</li>
+            </ul>
+            
+            <h3>Sơ Đồ Flow Nạp Tiền & Tự Cắt</h3>
+            <div class="mermaid">
+sequenceDiagram
+    participant User as 👤 Người Dùng
+    participant Server as ☁️ Cloud Server
+    participant ESP32 as 🌐 ESP32 Gateway
+    participant MCU as 🎛️ STM32 Firmware
+    participant Meter as ⚡ DLT645 Meter
+    
+    User->>Server: Thanh toán 50,000đ (Tương đương 10 kWh)
+    Server->>ESP32: Lệnh sạc limit: 10 kWh (10000 Wh)
+    ESP32->>MCU: Modbus Write 0x010B = 10000 (session_limit)
+    ESP32->>MCU: Modbus Write Coil 0x0000 = 1 (start_charge)
+    MCU-->>ESP32: Nhận lệnh, FSM -> CHARGING
+    
+    loop Mỗi 1 Giây
+        MCU->>Meter: Đọc Điện Năng
+        Meter-->>MCU: Trả về số điện năng tích lũy
+        MCU->>MCU: session_energy = meter_energy - start_energy
+    end
+    
+    Note over User,MCU: Trong phiên sạc, khách muốn sạc đầy hơn
+    User->>Server: Thanh toán tiếp 100,000đ (+20 kWh)
+    Server->>ESP32: Tăng cường limit lên 30 kWh (30000 Wh)
+    ESP32->>MCU: Modbus Write 0x010B = 30000
+    Note over MCU: Firmware tự động thừa nhận trần mới 30000 Wh<br>Tiến trình sạc tiếp tục không bị gián đoạn.
+    
+    loop Sạc Tới Đích
+        MCU->>MCU: session_energy tiến dần tới 30000
+    end
+    MCU->>MCU: Phát hiện session_energy >= 30000
+    MCU-->>ESP32: Ngắt Relay! Cờ last_stop_reason = ENERGY_EXCEEDED
+    ESP32->>Server: Phiên sạc hoàn tất. Báo cáo chốt số dư.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Modbus Register Map -->
+    <div id="tab-modbus-regs" class="tab-content">
+        <div class="section-card">
+            <h2>Toàn Vẹn Bản Đồ Thanh Ghi Modbus (Trạm Sạc <-> ESP32 Gateway)</h2>
+            <div class="alert-box warn">Cấu hình kết nối Modbus chuẩn: 9600 Baud, 8 Data, No Parity, 1 Stop (N-8-1).</div>
+            
+            <h3>FC04: Input Registers (Read-Only) - Telemetry Trạm Sạc</h3>
+            <table>
+                <tr><th>Addr</th><th>Tên Tham Số</th><th>Đơn vị</th><th>Mô tả chức năng</th></tr>
+                <tr><td>0x0000</td><td>voltage</td><td>0.1V</td><td>AC Volt. (Ví dụ 220.0V = 2200). DLT645 cập nhật liên tục nền.</td></tr>
+                <tr><td>0x0001</td><td>current</td><td>0.01A</td><td>Dòng điện tải (16.50A = 1650). DLT645 quét nền.</td></tr>
+                <tr><td>0x0002</td><td>power</td><td>W</td><td>Công suất Watt tức thì mạch sạc ăn vào.</td></tr>
+                <tr><td>0x0003</td><td>energy_hi</td><td>Wh</td><td>Năng lượng High uint16.</td></tr>
+                <tr><td>0x0004</td><td>energy_lo</td><td>Wh</td><td>Năng lượng Low uint16.</td></tr>
+                <tr><td>0x0005</td><td>temperature</td><td>0.1°C</td><td>Báo nhiệt phòng tủ sạc (72.0 = 720).</td></tr>
+                <tr><td>0x0006</td><td>fsm_state</td><td>enum</td><td>0:INIT, 1:IDLE, 2:STANDBY, 3:CHARGING, 4:FINISH, 5:ERROR.</td></tr>
+                <tr><td>0x0007</td><td>relay_status</td><td>bitmask</td><td>bit0=CHARGER, bit1=SOCKET, bit2=FAN, bit3=DOORLOCK</td></tr>
+                <tr><td>0x0009</td><td>meter_alarm</td><td>enum</td><td>Báo lỗi Cấp Nguồn cục bộ đồng hồ: OVERPOWER, OVERLOAD, VOLTAGE_FAULT...</td></tr>
+                <tr><td>0x000C</td><td>session_energy</td><td>Wh</td><td>Cực kỳ quan trọng: Năng lượng đã dùng TRONG LƯỢT này (để tính tiền).</td></tr>
+                <tr><td>0x0018</td><td>alarm_flags</td><td>bitmask</td><td>Cờ Error tổng quát: bit0=OVERTEMP, bit1=DOOR, bit2=TAMPER, bit7=COMM_FAIL, bit10=OVERCURRENT</td></tr>
+                <tr><td>0x0026</td><td>frequency</td><td>0.01Hz</td><td>Tần số lưới (nếu DLT645 có chức năng trả về Hz).</td></tr>
+                <tr><td>0x002A</td><td>last_stop_reason</td><td>enum</td><td>Tại sao sạc ngừng? (Remote Stop, Auto Stop Do Đầy Xe, Hay Lỗi Nguy Hiểm).</td></tr>
+                <tr><td>0x002C</td><td>ground_fault</td><td>bool</td><td>1=Rò rỉ dòng (Chờ tích hợp Module RCD tương lai).</td></tr>
+            </table>
+
+            <h3>FC05: Coils (Write-Only) - Trình Nảy Cò Trạm Hành Động</h3>
+            <p>Ghi <code>0xFF00</code> (Bật) để kích hoạt lệnh. MCU tự xử lý xong sẽ reset trả về 0.</p>
+            <table>
+                <tr><th>Addr</th><th>Tên Lệnh Lõi</th><th>Hành Động Khởi Động Trạm Sạc</th></tr>
+                <tr><td>0x0000</td><td>start_charge</td><td>Yêu cầu nạp năng lượng (Lật relay mạch sạc, kích FSM = CHARGING).</td></tr>
+                <tr><td>0x0001</td><td>stop_charge</td><td>Lệnh cắt Relay do thao tác từ App người dùng (FSM = FINISH).</td></tr>
+                <tr><td>0x0002</td><td>unlock_door</td><td>Đóng lệnh mở chốt từ (Hỗ trợ nhả 5 giây cho tủ).</td></tr>
+                <tr><td>0x0003</td><td>clear_error</td><td>Dọn trạng thái lỗi, Khởi động lại hệ điều khiển sau sự cố an toàn.</td></tr>
+                <tr><td>0x0006</td><td>enter_fw_update</td><td>Cưỡng chế sập Reboot vào boot ROM để nâng cấp DFU OTA.</td></tr>
+            </table>
+
+            <h3>FC03/06: Holding Registers (Read-Write) - Tinh Chỉnh Cấu Hình & Limits</h3>
+            <table>
+                <tr><th>Addr</th><th>Tên Biến</th><th>Def</th><th>Vai Trò Gateway</th></tr>
+                <tr><td>0x0100</td><td>fan_high_temp</td><td>450</td><td>Ngưỡng nhiệt kích hoạt Quạt tản (45.0 độ C)</td></tr>
+                <tr><td>0x0102</td><td>max_power</td><td>7000W</td><td>Trần năng lượng cứng, cắm hơn là sập rơ le (1 chạm).</td></tr>
+                <tr><td>0x0103</td><td>rated_power</td><td>3500W</td><td>Chuẩn ngưỡng mềm chạy Load balancing cho tính độn quá tải (Overload alg).</td></tr>
+                <tr><td>0x0109</td><td>master_heartbeat</td><td>0</td><td>Esp32 ping nhịp tim vào đây. STM32G0 nhận > 10s không thấy → Chuyển ERROR (Mất mạng ngắt dòng điện).</td></tr>
+                <tr><td>0x010A</td><td>current_limit</td><td>3200</td><td>Load Balancing. ESP32 Ghi số Ampe giới hạn động, MCU tự ngắt điện nếu vượt mức cho phép.</td></tr>
+                <tr><td>0x010B</td><td>session_energy_lim</td><td>0</td><td>Phân quyền ví tiền. Sạc đến số Wh này là cắt.</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 4: DLT645 -->
+    <div id="tab-dlt645" class="tab-content">
+        <div class="section-card">
+            <h2>Asynchronous Polling Firmware Implementation</h2>
+            <p>Module xử lý tín hiệu công tơ điện DLT645 được xây dựng vô cùng chuyên nghiệp. Nó không dựa trên bất kỳ thư viện Modbus RTU rào trước nào mà phân tích byte trần (raw struct) nhằm đảm bảo FSM liên hoàn trơn chu.</p>
+            
+            <h3>Chu kỳ Polling Vòng Tròn (Round Robin 500ms)</h3>
+            <ol>
+                <li>Gửi khung gọi <code>DLT_DI_VOLTAGE</code> -> Ghi trực tiếp Byte <code>AA AA AA AA AA AA</code> lên ngàm DMA/TXE của USART2. Tự tắt cờ DE khi hoàn tất ở Hardware. Đưa vòng lặp vào trạng thái WAIT_RX_VOLTAGE.</li>
+                <li>Trong 500ms, nếu ngắt RXNE đón được Byte báo hiệu đóng khung <code>0x16</code>. Tiến trình đánh thức hàm <code>DLT645_ParseFrame()</code> trích xuất Số Volt. Giải mã chuẩn IEEE/BCD.</li>
+                <li>Không chờ quá hạn, ngay lập tức tiếp tục ném ra lệnh <code>DLT_DI_CURRENT</code> và <code>DLT_DI_ENERGY</code> để lấy hết tham số sinh tử của sạc. Tính bù Power bằng tích $U \times I$ theo toán học.</li>
+                <li>Cuối lượt nạp, gói tham số gọi thẳng đến <code>Meter_Update(U, I, P, E)</code> ở lớp Abstract trên cùng, kích quạt phân luồng FSM xem xe ô tô điện có đang "vượt mức Ampe / ăn dòng trái phép" hay không.</li>
+            </ol>
+            
+            <div class="alert-box info">
+                Độ nảy thực tế của Dữ liệu công tơ điện trên Modbus Gateway do đó chậm nhất bằng đúng Tốc độ vật lý của Baudrate 2400 là khoảng 2.2 đến 3.5 Giây / Trạm. Các cổng quét UART khác (esp32 Modbus) không hề bị cản đường!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabContent, tabBtns;
+            tabContent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabContent.length; i++) {
+                tabContent[i].classList.remove("active");
+            }
+            tabBtns = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+</body>
+</html>

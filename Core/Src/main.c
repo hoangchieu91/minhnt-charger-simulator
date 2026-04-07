@@ -1,4 +1,10 @@
-#include "stm32f1xx_hal.h"
+#include "stm32g0xx_hal.h"
+
+/* Define assert_param if not defined by HAL conf */
+#ifndef assert_param
+#define assert_param(expr) ((void)0U)
+#endif
+
 #include "app_main.h"
 #include "led_rgw.h"
 #include "relay_ctrl.h"
@@ -9,8 +15,9 @@
 #include "door_lock.h"
 #include "diagnostics.h"
 #include "modbus_slave.h"
+#include "modbus_slave.h"
 #include "error_log.h"
-
+#include "meter_polling.h"
 /* Không dùng UART3 — xung đột PB10(RL_FAN)/PB11(RL_DOORLOCK)
  * Debug qua GDB server (tương đương SWD)
  * Monitor qua UART1 Modbus RTU (tương đương RS485_1) */
@@ -24,22 +31,26 @@ static void UART1_SendBytes(const uint8_t *data, uint16_t len) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
     for (uint16_t i = 0; i < len; i++) {
         /* Timeout for Renode: TXE wait */
-        for (volatile int t = 0; t < 1000 && !(USART1->SR & USART_SR_TXE); t++) {}
-        USART1->DR = data[i];
+        for (volatile int t = 0; t < 1000 && !(USART1->ISR & USART_ISR_TXE_TXFNF); t++) {}
+        USART1->TDR = data[i];
     }
     /* Timeout for Renode: TC wait */
-    for (volatile int t = 0; t < 1000 && !(USART1->SR & USART_SR_TC); t++) {}
+    for (volatile int t = 0; t < 1000 && !(USART1->ISR & USART_ISR_TC); t++) {}
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); /* DE=LOW = receive */
 }
 
 void USART1_IRQHandler(void) {
-    if (USART1->SR & USART_SR_RXNE) {
-        uint8_t byte = (uint8_t)(USART1->DR & 0xFF);
-        USART1->DR = byte; /* HIL DEBUG ECHO */
+    if (USART1->ISR & USART_ISR_RXNE_RXFNE) {
+        uint8_t byte = (uint8_t)(USART1->RDR & 0xFF);
+        USART1->TDR = byte; /* HIL DEBUG ECHO */
         Modbus_ReceiveByte(byte);
         /* Diagnostic: Toggle PB12 LED on every received byte in Renode */
         GPIOB->ODR ^= GPIO_PIN_12;
     }
+}
+
+void USART2_IRQHandler(void) {
+    MeterPolling_UART2_IRQHandler();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -75,8 +86,8 @@ static void hw_write_relay(uint8_t r_id, uint8_t s) {
 
 /* NTC: PA0 ADC_IN0 */
 static uint16_t hw_read_adc(void) {
-    /* Renode: ADC channel 0. Inject via: sysbus.ADC1 SetDefaultConversionValue 0 2048 */
-    ADC1->CR2 |= ADC_CR2_SWSTART;
+    /* Renode: ADC channel 0. Inject via: sysbus.ADC SetDefaultConversionValue 0 2048 */
+    ADC1->CR |= ADC_CR_ADSTART;
     /* Renode often doesn't set EOC. Skip polling to avoid log bloat and slowness. */
     return (uint16_t)(ADC1->DR & 0xFFF);
 }
@@ -138,9 +149,24 @@ static void GPIO_Init(void) {
     g.Mode = GPIO_MODE_INPUT;
     HAL_GPIO_Init(GPIOA, &g);
 
-    /* RS485 DE: PA1, PA4 */
-    g.Pin = GPIO_PIN_1 | GPIO_PIN_4;
+    /* RS485 DE1: PA1 */
+    g.Pin = GPIO_PIN_1;
     g.Mode = GPIO_MODE_OUTPUT_PP;
+    HAL_GPIO_Init(GPIOA, &g);
+
+    /* UART2 pins: PA2=TX(AF1), PA3=RX(AF1) */
+    g.Pin = GPIO_PIN_2 | GPIO_PIN_3;
+    g.Mode = GPIO_MODE_AF_PP;
+    g.Pull = GPIO_NOPULL;
+    g.Speed = GPIO_SPEED_FREQ_LOW;
+    g.Alternate = GPIO_AF1_USART2;
+    HAL_GPIO_Init(GPIOA, &g);
+
+    /* RS485 DE2: PA4 */
+    g.Pin = GPIO_PIN_4;
+    g.Mode = GPIO_MODE_OUTPUT_PP;
+    g.Pull = GPIO_NOPULL;
+    g.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &g);
 
     /* Door sensor input: PB12 */
@@ -157,11 +183,13 @@ static void GPIO_Init(void) {
 }
 
 static void ADC_Init(void) {
-    __HAL_RCC_ADC1_CLK_ENABLE();
-    ADC1->CR2 = ADC_CR2_ADON;     /* Bật ADC */
-    ADC1->SQR3 = 0;               /* Channel 0 (PA0) */
-    ADC1->CR2 |= ADC_CR2_CAL;     /* Calibrate */
+    __HAL_RCC_ADC_CLK_ENABLE();
+    ADC1->CR |= ADC_CR_ADVREGEN;  /* Enable voltage regulator */
+    for(volatile int i=0; i<1000; i++);
+    ADC1->CR |= ADC_CR_ADCAL;     /* Calibrate */
     /* Skip calibration wait for Renode */
+    ADC1->CR |= ADC_CR_ADEN;      /* Bật ADC */
+    ADC1->CHSELR |= ADC_CHSELR_CHSEL0; /* Channel 0 (PA0) */
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -181,7 +209,7 @@ static int hw_flash_erase(uint32_t addr) {
     HAL_FLASH_Unlock();
     FLASH_EraseInitTypeDef erase;
     erase.TypeErase = FLASH_TYPEERASE_PAGES;
-    erase.PageAddress = addr;
+    erase.Page = (addr - 0x08000000) / 2048; /* G030 page size is 2KB */
     erase.NbPages = 1;
     uint32_t error;
     HAL_StatusTypeDef st = HAL_FLASHEx_Erase(&erase, &error);
@@ -190,11 +218,13 @@ static int hw_flash_erase(uint32_t addr) {
 }
 static int hw_flash_write(uint32_t addr, const uint8_t *data, uint16_t len) {
     HAL_FLASH_Unlock();
-    /* STM32F103 writes in 16-bit halfwords */
-    for (uint16_t i = 0; i < len; i += 2) {
-        uint16_t hw = data[i];
-        if (i + 1 < len) hw |= ((uint16_t)data[i+1] << 8);
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, addr + i, hw);
+    /* STM32G0 writes in 64-bit doublewords */
+    for (uint16_t i = 0; i < len; i += 8) {
+        uint64_t dw = 0;
+        for (int j = 0; j < 8 && (i + j) < len; j++) {
+            dw |= ((uint64_t)data[i+j] << (j * 8));
+        }
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr + i, dw);
     }
     HAL_FLASH_Lock();
     return 0;
@@ -222,13 +252,18 @@ int main(void) {
 
     /* USART1 — RS485_1 Modbus RTU Slave (9600-8-N-1) */
     __HAL_RCC_USART1_CLK_ENABLE();
-    /* SystemCoreClock = 8MHz (HSI default, per system_stm32f1xx.c)
-     * BRR = SystemCoreClock / baud = 8000000 / 9600 = 833 = 0x0341
-     * Note: Renode's STM32_UART model ignores BRR for byte transport */
     USART1->BRR = SystemCoreClock / 9600;
-    USART1->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE | USART_CR1_UE;
+    USART1->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE_RXFNEIE | USART_CR1_UE;
     NVIC_EnableIRQ(USART1_IRQn);
     NVIC_SetPriority(USART1_IRQn, 1);
+
+    /* USART2 — RS485_2 DLT645 Meter Polling (2400-8-E-1) */
+    __HAL_RCC_USART2_CLK_ENABLE();
+    USART2->BRR = SystemCoreClock / 2400;
+    /* 8 Data Bits + 1 Parity = 9-bit word length (M0=1). Even Parity (PS=0, PCE=1) */
+    USART2->CR1 = USART_CR1_PCE | USART_CR1_M0 | USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE_RXFNEIE | USART_CR1_UE;
+    NVIC_EnableIRQ(USART2_IRQn);
+    NVIC_SetPriority(USART2_IRQn, 2);
 
     /* Init TẤT CẢ module */
     LED_Init(&led_hw);
@@ -250,8 +285,11 @@ int main(void) {
     ErrLog_Init(&errlog_flash);
     last_save_tick = HAL_GetTick();
 
+    /* DLT645 Meter RS485 Asynchronous Polling */
+    MeterPolling_Init();
+
     /* Boot marker — non-blocking write */
-    USART1->DR = 0xBB;
+    USART1->TDR = 0xBB;
 
     while (1) {
         /* Superloop — firmware logic */
@@ -259,6 +297,9 @@ int main(void) {
 
         /* Modbus RTU slave processing (CRC check & silence detector) */
         Modbus_Process();
+        
+        /* DLT645 Polling State Machine */
+        MeterPolling_Process();
 
         /* Error Log flush every 60s */
         if (HAL_GetTick() - last_save_tick >= 60000) {
@@ -269,8 +310,8 @@ int main(void) {
 }
 
 void HAL_MspInit(void) {
-    __HAL_RCC_AFIO_CLK_ENABLE();
     __HAL_RCC_PWR_CLK_ENABLE();
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
 }
 
 void SystemClock_Config(void) { /* HSI 8MHz default */ }

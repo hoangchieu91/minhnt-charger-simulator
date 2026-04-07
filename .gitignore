@@ -45,3 +45,9 @@ mosquitto/log/
 
 # Temp
 /tmp/
+*.o
+*.elf
+*.bin
+*.hex
+.vscode/
+

@@ -1,0 +1,5 @@
+r
+loadbin charger.bin, 0x08000000
+r
+g
+q
