@@ -33,6 +33,7 @@ gdb-multiarch charger.elf -ex "target remote :2331" -ex "load" -ex "monitor rese
 - **[Firmware Reference (HTML)](docs/FIRMWARE_REFERENCE_STM32G0.html)** — Kiến trúc, Giải thuật, Register Map (mở bằng trình duyệt)
 - **[Firmware Reference (MD)](docs/FIRMWARE_REFERENCE_STM32G0.md)** — Bản Markdown cho AI/developer
 - **[Bàn giao 07/04](docs/HANDOVER_20250407.md)** — Tóm tắt phiên migration
+- **[Bàn giao 09/04](docs/HANDOVER_20260409.md)** — Chống nhiễu Hardware Modbus & Tích hợp hoàn thiện DLT645 Meter
 
 ## Hardware Pinout
 | Chức năng | Chân MCU |
