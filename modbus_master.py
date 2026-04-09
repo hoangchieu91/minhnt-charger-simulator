@@ -197,7 +197,7 @@ class TRU_ModbusMaster:
         print("  📊 INPUT REGISTERS (FC=04, Read-Only)")
         print("═"*65)
 
-        result = self.client.read_input_registers(address=0x0000, count=35, device_id=self.slave)
+        result = self.client.read_input_registers(address=0x0000, count=45, device_id=self.slave)
         if result.isError():
             print(f"  ❌ Lỗi đọc: {result}")
             return None
@@ -260,14 +260,14 @@ class TRU_ModbusMaster:
             print(f"  ❌ Lỗi đọc: {result}")
             return None
 
-        bits = result.bits[:6]
-        icons = ["🚪", "⚡", "🚨", "🌀", "🔓", "⚠️"]
+        bits = result.bits[:8]
+        icons = ["🚪", "⚡", "🚨", "🌀", "🔓", "⚠️", "🔌", "🔌"]
         for i, (addr, name) in enumerate(DI.items()):
             val = bits[i] if i < len(bits) else False
-            icon = icons[i]
+            icon = icons[i] if i < len(icons) else "❓"
             state = "🔴 TRUE" if val else "⚪ false"
             print(f"  0x{addr:04X} │ {icon} {name:20s} │ {state}")
-        return {DI[i]: bits[i] for i in range(min(len(bits), 6))}
+        return {DI[i]: bits[i] for i in range(min(len(bits), len(DI)))}
 
     # ─── FC01: Read Coils ───
     def read_coils(self):

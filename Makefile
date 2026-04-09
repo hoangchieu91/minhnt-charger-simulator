@@ -17,6 +17,7 @@ Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_flash.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_flash_ex.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_gpio.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_pwr.c \
+Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_pwr_ex.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_rcc.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_rcc_ex.c \
 Drivers/STM32G0xx_HAL_Driver/Src/stm32g0xx_hal_uart.c
@@ -37,7 +38,7 @@ OBJS = $(SRCS:.c=.o) $(ASM_SRCS:.s=.o)
 all: $(TARGET).elf $(TARGET).bin
 
 $(TARGET).elf: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@ -Wl,--gc-sections --specs=nano.specs --specs=nosys.specs
+	$(CC) $(CFLAGS) $(OBJS) -o $@ -Wl,--gc-sections -Wl,-Map=$(TARGET).map --specs=nano.specs --specs=nosys.specs
 	$(SZ) $@
 
 %.o: %.c

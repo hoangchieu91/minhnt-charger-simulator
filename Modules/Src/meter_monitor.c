@@ -10,8 +10,9 @@
 static MeterHardwareConfig_t *hw = NULL;
 static MeterConfig_t cfg = { .max_power_W = 7000, .rated_power_W = 3500, .energy_limit_Wh = 20000 };
 
-static uint16_t voltage = 0, current = 0, power = 0;
+static uint16_t voltage = 0, current = 0, power = 0, frequency = 0, power_factor = 0;
 static uint32_t energy = 0, energy_start = 0;
+static uint8_t meter_serial[6] = {0, 0, 0, 0, 0, 0}; /* Clear by default for discovery */
 static MeterAlarm_t alarm = METER_OK;
 
 /* Data validity tracking */
@@ -40,11 +41,13 @@ void Meter_SetConfig(MeterConfig_t *c) {
     if (c) cfg = *c;
 }
 
-void Meter_Update(uint16_t voltage_01V, uint16_t current_001A, uint16_t power_W, uint32_t energy_Wh) {
+void Meter_Update(uint16_t voltage_01V, uint16_t current_001A, uint16_t power_W, uint32_t energy_Wh, uint16_t freq_01Hz, uint16_t pf_001) {
     voltage = voltage_01V;
     current = current_001A;
     power = power_W;
     energy = energy_Wh;
+    frequency = freq_01Hz;
+    power_factor = pf_001;
     if (hw) last_update_tick = hw->get_tick();
     meter_valid = 1;
 }
@@ -128,4 +131,19 @@ uint16_t Meter_GetVoltage(void) { return voltage; }
 uint16_t Meter_GetCurrent(void) { return current; }
 uint16_t Meter_GetPower(void) { return power; }
 uint32_t Meter_GetEnergy(void) { return energy; }
+uint16_t Meter_GetFrequency(void) { return frequency; }
+uint16_t Meter_GetPowerFactor(void) { return power_factor; }
+
+void Meter_GetSerial(uint8_t *bcd_out) {
+    if (bcd_out) {
+        for(int i=0; i<6; i++) bcd_out[i] = meter_serial[i];
+    }
+}
+
+void Meter_SetSerial(const uint8_t *bcd_in) {
+    if (bcd_in) {
+        for(int i=0; i<6; i++) meter_serial[i] = bcd_in[i];
+    }
+}
+
 uint8_t  Meter_IsValid(void) { return meter_valid; }

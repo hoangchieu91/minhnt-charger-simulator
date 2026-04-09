@@ -9,6 +9,7 @@
 #include "led_rgw.h"
 #include "relay_ctrl.h"
 #include "error_log.h"
+#include "meter_polling.h"
 
 /* ═══════════════════════════════════════════════════════════
  * INTERNAL STATE
@@ -134,17 +135,55 @@ static int read_input_register(uint16_t addr, uint16_t *value) {
         }
         case 0x0022: *value = master_alive;  return 0; /* 0=no HB yet, 1=alive, 2=timeout */
         /* Rev 2.0: Meter serial (BCD from DLT645) */
-        case 0x0023: *value = 0; return 0; /* meter_serial_1 — TODO: DLT645 serial API */
-        case 0x0024: *value = 0; return 0; /* meter_serial_2 */
-        case 0x0025: *value = 0; return 0; /* meter_serial_3 */
+        case 0x0023: {
+            uint8_t bcd[6];
+            Meter_GetSerial(bcd);
+            *value = ((uint16_t)bcd[5] << 8) | bcd[4];
+            return 0;
+        }
+        case 0x0024: {
+            uint8_t bcd[6];
+            Meter_GetSerial(bcd);
+            *value = ((uint16_t)bcd[3] << 8) | bcd[2];
+            return 0;
+        }
+        case 0x0025: {
+            uint8_t bcd[6];
+            Meter_GetSerial(bcd);
+            *value = ((uint16_t)bcd[1] << 8) | bcd[0];
+            return 0;
+        }
         /* Rev 2.0: New Input Registers */
-        case 0x0026: *value = 0xFFFF; return 0; /* frequency — TODO: DLT645 */
-        case 0x0027: *value = 0xFFFF; return 0; /* power_factor — TODO: DLT645 */
+        case 0x0026: *value = Meter_GetFrequency(); return 0;   /* 0.1Hz */
+        case 0x0027: *value = Meter_GetPowerFactor(); return 0; /* 0.001 */
         case 0x0028: *value = Meter_GetCurrent(); return 0; /* current_rms_raw */
         case 0x0029: *value = App_GetSessionId(); return 0;
         case 0x002A: *value = App_GetLastStopReason(); return 0;
         case 0x002B: *value = App_GetConnectorStatus(); return 0;
         case 0x002C: *value = App_GetGroundFault(); return 0;
+        
+        /* DLT645 Diagnostics (New) */
+        case 0x0030: case 0x0031: case 0x0032: case 0x0033:
+        case 0x0034: case 0x0035: case 0x0036: case 0x0037: {
+            uint8_t tx[16];
+            MeterPolling_GetLastTX(tx);
+            uint16_t offset = (addr - 0x0030) * 2;
+            *value = ((uint16_t)tx[offset] << 8) | tx[offset + 1];
+            return 0;
+        }
+        case 0x0040: case 0x0041: case 0x0042: case 0x0043:
+        case 0x0044: case 0x0045: case 0x0046: case 0x0047: {
+            uint8_t rx[16];
+            MeterPolling_GetLastRX(rx);
+            uint16_t offset = (addr - 0x0040) * 2;
+            *value = ((uint16_t)rx[offset] << 8) | rx[offset + 1];
+            return 0;
+        }
+        case 0x0050: *value = (uint16_t)MeterPolling_GetTxCnt(); return 0;
+        case 0x0051: *value = (uint16_t)MeterPolling_GetRxCnt(); return 0;
+        case 0x0052: *value = (uint16_t)MeterPolling_GetCrcErrCnt(); return 0;
+        case 0x0053: *value = (uint16_t)MeterPolling_GetTimeoutCnt(); return 0;
+        
         default: return -1;
     }
 }

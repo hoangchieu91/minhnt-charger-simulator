@@ -22,6 +22,8 @@
  * Debug qua GDB server (tương đương SWD)
  * Monitor qua UART1 Modbus RTU (tương đương RS485_1) */
 
+void SystemClock_Config(void);
+
 /* ═══════════════════════════════════════════════════════════
  * UART1 — RS485_1 Modbus RTU (PA9=TX, PA10=RX, PA1=DE)
  * ═══════════════════════════════════════════════════════════ */
@@ -30,19 +32,22 @@ static void UART1_SendBytes(const uint8_t *data, uint16_t len) {
     /* DE pin HIGH = transmit */
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
     for (uint16_t i = 0; i < len; i++) {
-        /* Timeout for Renode: TXE wait */
-        for (volatile int t = 0; t < 1000 && !(USART1->ISR & USART_ISR_TXE_TXFNF); t++) {}
+        uint32_t start = HAL_GetTick();
+        while (!(USART1->ISR & USART_ISR_TXE_TXFNF)) {
+            if (HAL_GetTick() - start > 10) break;
+        }
         USART1->TDR = data[i];
     }
-    /* Timeout for Renode: TC wait */
-    for (volatile int t = 0; t < 1000 && !(USART1->ISR & USART_ISR_TC); t++) {}
+    uint32_t start_tc = HAL_GetTick();
+    while (!(USART1->ISR & USART_ISR_TC)) {
+        if (HAL_GetTick() - start_tc > 10) break;
+    }
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET); /* DE=LOW = receive */
 }
 
 void USART1_IRQHandler(void) {
     if (USART1->ISR & USART_ISR_RXNE_RXFNE) {
         uint8_t byte = (uint8_t)(USART1->RDR & 0xFF);
-        USART1->TDR = byte; /* HIL DEBUG ECHO */
         Modbus_ReceiveByte(byte);
         /* Diagnostic: Toggle PB12 LED on every received byte in Renode */
         GPIOB->ODR ^= GPIO_PIN_12;
@@ -139,14 +144,12 @@ static void GPIO_Init(void) {
     g.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(GPIOB, &g);
 
-    /* UART1 pins: PA9=TX(AF_PP), PA10=RX(Input) */
-    g.Pin = GPIO_PIN_9;
+    /* UART1 pins: PA9=TX(AF1), PA10=RX(AF1) */
+    g.Pin = GPIO_PIN_9 | GPIO_PIN_10;
     g.Mode = GPIO_MODE_AF_PP;
+    g.Pull = GPIO_NOPULL;
     g.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(GPIOA, &g);
-
-    g.Pin = GPIO_PIN_10;
-    g.Mode = GPIO_MODE_INPUT;
+    g.Alternate = GPIO_AF1_USART1;
     HAL_GPIO_Init(GPIOA, &g);
 
     /* RS485 DE1: PA1 */
@@ -246,6 +249,8 @@ static uint32_t last_save_tick = 0;
 
 int main(void) {
     HAL_Init();
+    SystemClock_Config();
+    SystemCoreClockUpdate();
 
     GPIO_Init();
     ADC_Init();
@@ -314,5 +319,34 @@ void HAL_MspInit(void) {
     __HAL_RCC_SYSCFG_CLK_ENABLE();
 }
 
-void SystemClock_Config(void) { /* HSI 8MHz default */ }
+void SystemClock_Config(void) {
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+    /** Configure the main internal regulator output voltage 
+    */
+    HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+    /** Initializes the RCC Oscillators according to the specified parameters
+    * in the RCC_OscInitTypeDef structure.
+    */
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+        /* Error_Handler */
+    }
+
+    /** Initializes the CPU, AHB and APB buses clocks 
+    */
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1;
+    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
+        /* Error_Handler */
+    }
+}
 void Error_Handler(void) { while(1); }

@@ -43,8 +43,10 @@ void Meter_SetConfig(MeterConfig_t *cfg);
  * @param current_001A Dòng điện (0.01A, VD: 1050 = 10.5A)
  * @param power_W Công suất (W)
  * @param energy_Wh Năng lượng tích lũy (Wh)
+ * @param freq_01Hz Tần số (0.1Hz, VD: 500 = 50.0Hz)
+ * @param pf_001 Hệ số công suất (0.001, VD: 950 = 0.950)
  */
-void Meter_Update(uint16_t voltage_01V, uint16_t current_001A, uint16_t power_W, uint32_t energy_Wh);
+void Meter_Update(uint16_t voltage_01V, uint16_t current_001A, uint16_t power_W, uint32_t energy_Wh, uint16_t freq_01Hz, uint16_t pf_001);
 
 /** @brief Gọi liên tục trong main loop để kiểm tra alarm thời gian */
 void Meter_Process(void);
@@ -63,6 +65,13 @@ uint16_t Meter_GetVoltage(void);
 uint16_t Meter_GetCurrent(void);
 uint16_t Meter_GetPower(void);
 uint32_t Meter_GetEnergy(void);
+uint16_t Meter_GetFrequency(void);
+uint16_t Meter_GetPowerFactor(void);
+
+/** @brief Lấy địa chỉ đồng hồ (6 byte BCD) */
+void Meter_GetSerial(uint8_t *bcd_out);
+/** @brief Cập nhật địa chỉ đồng hồ (Runtime Discovery) */
+void Meter_SetSerial(const uint8_t *bcd_in);
 
 /** @brief 1=data tươi (DLT645 OK), 0=stale (mất kết nối >10s) */
 uint8_t  Meter_IsValid(void);

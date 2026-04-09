@@ -1,5 +1,6 @@
 # Monitor settings for high verbosity
 logLevel -1
+emulation CreateTelnetServer 1235
 
 using sysbus
 mach create "tru_v1"
@@ -8,10 +9,13 @@ $bin?=@charger.elf
 
 # Create everything inside the machine scope if possible
 # Note: Renode 1.15.2 sometimes requires emulation scope for terminals
+# USART1: Modbus Port
 emulation CreateServerSocketTerminal 4321 "modbus_uart" false
-
-# Use the most generic connector syntax
 connector Connect sysbus.usart1 modbus_uart
+
+# USART2: Meter Port (DLT645)
+emulation CreateServerSocketTerminal 4322 "meter_uart" false
+connector Connect sysbus.usart2 meter_uart
 
 macro reset
 """
